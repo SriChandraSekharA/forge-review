@@ -33,11 +33,8 @@ fi
 # Count findings: non-empty lines that look like findings, or all non-empty if no format
 count=0
 if [ -f "$findings_file" ]; then
-  # count non-empty lines excluding score/feedback meta lines, guard pipefail for empty file
-  set +o pipefail
-  count=$(grep -vE "^score:|^feedback:|^hints:" "$findings_file" | grep -vE "^[[:space:]]*$" | wc -l | tr -d ' ')
-  set -o pipefail
-  # wc -l returns 0 for empty; ensure numeric
+  # count non-meta, non-blank lines in one grep -c (SC2126: avoids `grep | wc -l`)
+  count=$(grep -cvE "^score:|^feedback:|^hints:|^[[:space:]]*$" "$findings_file" 2>/dev/null || true)
   if ! echo "$count" | grep -qE "^[0-9]+$"; then count=0; fi
 else
   count=0
