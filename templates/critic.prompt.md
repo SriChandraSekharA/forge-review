@@ -28,6 +28,16 @@ If TEST_CONTEXT shows existing tests, review them for coverage gaps, missing edg
 - No test deletion to fake green - if finding shows test deletion, treat as high.
 - When `Tests detected: no`, do not penalize missing tests - the repo has no tests, so do not block.
 
+## Team Rules Scoring (review-rule markers)
+
+`# review-rule: <text>` lines in the diff context are the team's plain-English review rules
+(from `.forge-standard-review/rules.md`).
+
+- Rule violations are real findings: weigh repeated violations of the same rule in scoring -
+  a rule broken N times does not round up to a pass.
+- A diff that honors every injected rule is a positive signal toward the gate.
+- No `# review-rule:` lines is normal (no team rules active) - score without them.
+
 ## Finding Severity for Tests
 
 - missing test coverage for changed critical logic -> high

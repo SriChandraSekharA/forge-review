@@ -45,6 +45,16 @@ If TEST_CONTEXT shows existing tests, review them for coverage gaps, missing edg
 - Never emit test findings when `Tests detected: no` - the repo has no tests, so do not block.
 - Discovery is best-effort with 30s timeout; if it fails, fall back to file-list heuristics - never fail the review if tests do not run.
 
+## Team Rules (plain English)
+
+The diff context may include `# review-rule: <text>` marker lines - the team's plain-English
+review rules (from `.forge-standard-review/rules.md`), enforced on every review.
+
+- Treat each `# review-rule:` line as a hard standard for this diff; report every violation.
+- Cite violations in the normal format, naming the rule:
+  `L: path:line [axis/severity] rule violation: <rule text> -> fix hint`
+- No `# review-rule:` lines in context means no team rules - do not invent any.
+
 ## BAD / GOOD Examples
 
 - BAD: `eval(userInput)` - injection; GOOD: `JSON.parse` with schema (Zod/Pydantic) validation. L: file:line

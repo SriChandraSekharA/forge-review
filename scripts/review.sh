@@ -8,14 +8,25 @@ set -euo pipefail
 #   ./scripts/review.sh --range BASE..HEAD [--preview]
 #   ./scripts/review.sh --file path/to/file [--preview]
 #   ./scripts/review.sh [--preview]  (defaults to BASE_SHA...HEAD_SHA diff)
+# Options:
+#   --max-iterations N   max loop iterations (default 8)
+#   --max-fixes N        max total hint re-injections across the loop (default 4)
+#   --tests CMD          run CMD (bash -c) once per iteration after critic scoring;
+#                        non-zero exit injects a synthetic [test/high] finding
+# Feedback memory: .forge-standard-review/feedback.jsonl (see scripts/learn.sh)
+# Team rules: .forge-standard-review/rules.md (one "- <plain-English rule>" per line,
+# '#' comments/blank lines ignored) is loaded once and injected into every iteration
+# as "# review-rule:" markers; a missing or empty file is never an error.
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
-repo_root="$(cd "$script_dir/.." && pwd 2>/dev/null || pwd)"
 
 mode="auto"
 range_val=""
 file_path=""
 preview=0
+MAX_ITERATIONS=8
+MAX_FIXES=4
+tests_cmd=""
 
 # Parse args
 while [ $# -gt 0 ]; do
@@ -40,8 +51,29 @@ while [ $# -gt 0 ]; do
       preview=1
       shift
       ;;
+    --max-iterations)
+      if [ $# -lt 2 ]; then echo "error: --max-iterations requires N" >&2; exit 2; fi
+      case "$2" in
+        ''|*[!0-9]*|0) echo "error: --max-iterations requires a positive integer" >&2; exit 2 ;;
+      esac
+      MAX_ITERATIONS="$2"
+      shift 2
+      ;;
+    --max-fixes)
+      if [ $# -lt 2 ]; then echo "error: --max-fixes requires N" >&2; exit 2; fi
+      case "$2" in
+        ''|*[!0-9]*) echo "error: --max-fixes requires a non-negative integer" >&2; exit 2 ;;
+      esac
+      MAX_FIXES="$2"
+      shift 2
+      ;;
+    --tests)
+      if [ $# -lt 2 ] || [ -z "$2" ]; then echo "error: --tests requires a command" >&2; exit 2; fi
+      tests_cmd="$2"
+      shift 2
+      ;;
     --help|-h)
-      echo "Usage: $0 [--staged|--range BASE..HEAD|--file path] [--preview]"
+      echo "Usage: $0 [--staged|--range BASE..HEAD|--file path] [--preview] [--max-iterations N] [--max-fixes N] [--tests CMD]"
       exit 0
       ;;
     *)
@@ -72,8 +104,7 @@ else
   HEAD_SHA="HEAD"
 fi
 
-# Resolve diff content
-diff_content=""
+# Resolve diff target file
 diff_file=$(mktemp)
 trap 'rm -f "$diff_file"' EXIT
 
@@ -131,7 +162,6 @@ get_diff() {
 }
 
 get_diff "$diff_file"
-diff_content=$(cat "$diff_file" 2>/dev/null || true)
 
 # TEST_AWARE detection - non-failing, timeout 30s, guards for missing tests
 TESTS_PRESENT=0
@@ -260,10 +290,31 @@ mkdir -p "$out_dir"
 if [ ! -f "$out_dir/learning.md" ]; then
   : > "$out_dir/learning.md"
 fi
+
+# --- Team rules (Greptile custom rules & standards analog) ---
+# Loads $out_dir/rules.md: one plain-English rule per line as "- <text>";
+# '#' comment lines and blank lines are ignored. A missing or empty file is
+# not an error - the review simply runs with zero team rules active.
+RULES_CONTEXT=""
+RULES_COUNT=0
+rules_file="$out_dir/rules.md"
+if [ -f "$rules_file" ]; then
+  rules_body="$(grep -vE '^[[:space:]]*(#|$)' "$rules_file" 2>/dev/null || true)"
+  if [ -n "$rules_body" ]; then
+    while IFS= read -r rule_text; do
+      [ -z "$rule_text" ] && continue
+      RULES_CONTEXT="${RULES_CONTEXT}# review-rule: ${rule_text}"$'\n'
+      RULES_COUNT=$((RULES_COUNT + 1))
+    done <<< "$rules_body"
+  fi
+fi
 # Timestamp for run log
 ts=$(date +%s 2>/dev/null || echo $$)
 run_log="$out_dir/run-${ts}-$$.log"
 : > "$run_log"
+# Capture active team rules in the run log (one '# review-rule:' marker per rule;
+# nothing appended when no rules are active)
+printf '%s' "$RULES_CONTEXT" >> "$run_log"
 
 # Helper: worker heuristic scan (local, no API)
 run_worker() {
@@ -343,34 +394,183 @@ run_worker() {
   # (do not add artificial failure for empty - let critic score high)
 }
 
+# --- Feedback memory (Greptile-inspired learned feedback) ---
+# Sources .forge-standard-review/feedback.jsonl (append-only, written by learn.sh):
+#   {"ts":"<epoch>","action":"dismiss","path":"<glob>","rule":"<regex>","reason":"..."}
+#   {"ts":"<epoch>","action":"floor","min_severity":"high|medium|low|nitpick","reason":"..."}
+# Invalid/missing lines are skipped gracefully - feedback never fails the review.
+
+# Severity rank: critical=4 high=3 medium=2 low=1 nitpick=0 (unknown treated as 0)
+sev_rank() {
+  case "$1" in
+    critical) echo 4 ;;
+    high) echo 3 ;;
+    medium) echo 2 ;;
+    low) echo 1 ;;
+    *) echo 0 ;;
+  esac
+}
+
+# Load feedback.jsonl once: sets FLOOR_RANK (-1 = none) and DISMISS_LIST (path<TAB>rule lines)
+load_feedback_memory() {
+  local fb="$1"
+  FLOOR_RANK=-1
+  DISMISS_LIST=""
+  [ -f "$fb" ] || return 0
+  local line action dpath drule sev srank
+  while IFS= read -r line || [ -n "$line" ]; do
+    [ -z "$line" ] && continue
+    if ! printf '%s' "$line" | jq -e . >/dev/null 2>&1; then continue; fi
+    action="$(printf '%s' "$line" | jq -r '.action // ""' 2>/dev/null || true)"
+    case "$action" in
+      dismiss)
+        dpath="$(printf '%s' "$line" | jq -r '.path // ""' 2>/dev/null || true)"
+        drule="$(printf '%s' "$line" | jq -r '.rule // ""' 2>/dev/null || true)"
+        if [ -n "$dpath" ] && [ -n "$drule" ]; then
+          DISMISS_LIST="${DISMISS_LIST}${dpath}"$'\t'"${drule}"$'\n'
+        fi
+        ;;
+      floor)
+        sev="$(printf '%s' "$line" | jq -r '.min_severity // ""' 2>/dev/null || true)"
+        case "$sev" in
+          critical|high|medium|low|nitpick)
+            srank=$(sev_rank "$sev")
+            if [ "$srank" -gt "$FLOOR_RANK" ]; then FLOOR_RANK="$srank"; fi
+            ;;
+        esac
+        ;;
+    esac
+  done < "$fb"
+}
+
+# Filter findings through learned dismiss rules + severity floor (in place).
+# Sets SUPPRESSED_ITER / BELOW_FLOOR_ITER / DISMISSED_ITER for this iteration.
+apply_learning_filters() {
+  local src="$1"
+  local filtered
+  filtered=$(mktemp)
+  : > "$filtered"
+  SUPPRESSED_ITER=0
+  BELOW_FLOOR_ITER=0
+  DISMISSED_ITER=0
+  local fline rest token fpath catsev fsev frank reason drop dpath drule
+  while IFS= read -r fline; do
+    [ -z "$fline" ] && continue
+    drop=0
+    rest="${fline#L: }"
+    token="${rest%%[[:space:]]*}"
+    fpath="${token%:*}"
+    # reason: text after the [category/severity] group
+    reason="$(printf '%s\n' "$rest" | sed -E 's/^[^]]*\][[:space:]]*//')"
+    # severity from the [category/severity] bracket group
+    catsev="$(printf '%s\n' "$rest" | grep -oE '\[[^]]*\]' | head -n1 || true)"
+    catsev="${catsev#\[}"
+    catsev="${catsev%\]}"
+    fsev="${catsev#*/}"
+    # 1) learned severity floor: drop findings strictly below floor
+    if [ "$drop" -eq 0 ] && [ "$FLOOR_RANK" -ge 0 ]; then
+      frank=$(sev_rank "$fsev")
+      if [ "$frank" -lt "$FLOOR_RANK" ]; then
+        BELOW_FLOOR_ITER=$((BELOW_FLOOR_ITER + 1))
+        drop=1
+      fi
+    fi
+    # 2) learned dismiss rules: path glob (or literal) AND reason regex (grep -E, case-sensitive)
+    if [ "$drop" -eq 0 ] && [ -n "$DISMISS_LIST" ]; then
+      while IFS=$'\t' read -r dpath drule; do
+        if [ -z "$dpath" ] && [ -z "$drule" ]; then continue; fi
+        # SC2053: unquoted RHS is intentional — dismiss rules are path GLOBS, not literals
+        # shellcheck disable=SC2053
+        if [[ "$fpath" == $dpath ]] && printf '%s\n' "$reason" | grep -Eq -- "$drule" 2>/dev/null; then
+          DISMISSED_ITER=$((DISMISSED_ITER + 1))
+          drop=1
+          break
+        fi
+      done <<< "$DISMISS_LIST"
+    fi
+    if [ "$drop" -eq 0 ]; then
+      printf '%s\n' "$fline" >> "$filtered"
+    fi
+  done < "$src"
+  SUPPRESSED_ITER=$((DISMISSED_ITER + BELOW_FLOOR_ITER))
+  TOTAL_SUPPRESSED=$((TOTAL_SUPPRESSED + SUPPRESSED_ITER))
+  TOTAL_BELOW_FLOOR=$((TOTAL_BELOW_FLOOR + BELOW_FLOOR_ITER))
+  cat "$filtered" > "$src"
+  rm -f "$filtered"
+}
+
+# --- optional --tests hook (Greptile-TREX analog) ---
+# Runs the exact user-supplied command once per iteration (bash -c, single
+# execution, no retries). On failure, appends one synthetic [test/high] finding
+# plus up to 10 output lines into the findings pool. Nothing is interpolated
+# into the command beyond what the user passed.
+run_tests_hook() {
+  local findings_out="$1"
+  [ -n "$tests_cmd" ] || return 0
+  local raw_out tests_out tests_rc=0 tline
+  raw_out=$(mktemp)
+  tests_out=$(mktemp)
+  # single execution - capture exit code and last 50 output lines
+  bash -c "$tests_cmd" > "$raw_out" 2>&1 || tests_rc=$?
+  if [ "$tests_rc" -ne 0 ]; then
+    tail -n 50 "$raw_out" > "$tests_out" 2>/dev/null || : > "$tests_out"
+    printf 'L: path:0 [test/high] test command failed (exit %s): %s\n' "$tests_rc" "$tests_cmd" >> "$findings_out"
+    if [ -s "$tests_out" ]; then
+      tail -n 10 "$tests_out" 2>/dev/null | while IFS= read -r tline; do
+        [ -z "$tline" ] && continue
+        printf 'L: path:0 [test/high] test-output: %s\n' "$tline" >> "$findings_out"
+      done
+    fi
+    echo "tests hook: command failed (exit $tests_rc), synthetic finding appended" | tee -a "$run_log" >/dev/null
+  else
+    echo "tests hook: command passed (exit 0)" | tee -a "$run_log" >/dev/null
+  fi
+  rm -f "$raw_out" "$tests_out"
+  return 0
+}
+
 # Loop gate 8 max 4
 final_score=0
-final_feedback=""
 hint_accum=""
+TOTAL_SUPPRESSED=0
+TOTAL_BELOW_FLOOR=0
+fixes_used=0
 
-for i in 1 2 3 4; do
+load_feedback_memory "$out_dir/feedback.jsonl"
+
+i=1
+while [ "$i" -le "$MAX_ITERATIONS" ]; do
   findings_tmp=$(mktemp)
   critic_out=$(mktemp)
 
-  # inject hint from previous iteration into diff context (append hint marker)
-  # hint marker uses neutral text to avoid triggering heuristic patterns
+  # inject team rules + hint from previous iteration into diff context
+  # marker lines use neutral prefixes to minimize triggering heuristic patterns
+  aug_diff=$(mktemp)
+  cat "$diff_file" > "$aug_diff"
+  # team rules are re-injected every iteration (plain-English, one marker per rule)
+  if [ -n "$RULES_CONTEXT" ]; then
+    printf '%s' "$RULES_CONTEXT" >> "$aug_diff"
+  fi
   if [ -n "$hint_accum" ]; then
-    aug_diff=$(mktemp)
-    cat "$diff_file" > "$aug_diff"
     # neutral marker - intentionally avoids TODO/console.log/injection keywords
     echo "# review-hint iter $i: $hint_accum" >> "$aug_diff"
-    run_worker "$aug_diff" "$findings_tmp" "$i"
-    rm -f "$aug_diff"
-  else
-    run_worker "$diff_file" "$findings_tmp" "$i"
   fi
+  run_worker "$aug_diff" "$findings_tmp" "$i"
+  rm -f "$aug_diff"
 
   # Deduplicate findings
   if [ -s "$findings_tmp" ]; then
     sort -u "$findings_tmp" -o "$findings_tmp" 2>/dev/null || true
   fi
+
+  # Feedback memory: learned dismiss rules + severity floor (after dedup)
+  apply_learning_filters "$findings_tmp"
+  if [ "$SUPPRESSED_ITER" -gt 0 ]; then
+    echo "learning: $SUPPRESSED_ITER suppressed ($BELOW_FLOOR_ITER below floor)" >> "$run_log"
+  fi
+
   set +o pipefail
-  findings_count=$(grep -vE "^[[:space:]]*$" "$findings_tmp" 2>/dev/null | wc -l | tr -d ' ')
+  findings_count=$(grep -cvE "^[[:space:]]*$" "$findings_tmp" 2>/dev/null || true)
   set -o pipefail
   if ! echo "$findings_count" | grep -qE "^[0-9]+$"; then findings_count=0; fi
 
@@ -395,6 +595,14 @@ for i in 1 2 3 4; do
   if [ -z "$score_val" ]; then score_val=6; fi
   feedback_line=$(grep -E "^feedback:" "$critic_out" | head -1 || echo "feedback: n/a")
   hints_line=$(grep -E "^hints:" "$critic_out" | head -1 || echo "hints: none")
+
+  # --tests hook: once per iteration, after critic scoring
+  run_tests_hook "$findings_tmp"
+  # recompute count so logs reflect the pool incl. synthetic test findings
+  if [ -n "$tests_cmd" ]; then
+    findings_count=$(grep -cvE "^[[:space:]]*$" "$findings_tmp" 2>/dev/null || true)
+    if ! echo "$findings_count" | grep -qE "^[0-9]+$"; then findings_count=0; fi
+  fi
 
   # Append monotonically to learning.md (never overwrite)
   {
@@ -432,7 +640,6 @@ for i in 1 2 3 4; do
   echo "Iteration $i: $score_line ($findings_count findings)"
 
   final_score=$score_val
-  final_feedback="$feedback_line"
 
   # Gate check
   if [ "$score_val" -ge 8 ]; then
@@ -440,20 +647,35 @@ for i in 1 2 3 4; do
     rm -f "$findings_tmp" "$critic_out"
     break
   else
-    hint_accum=$(echo "$hints_line" | sed 's/^hints:[[:space:]]*//')
-    if [ -z "$hint_accum" ] || [ "$hint_accum" = "none" ]; then
-      hint_accum="address findings, add boundary coverage, use parameterized statements"
+    if [ "$fixes_used" -lt "$MAX_FIXES" ]; then
+      hint_accum="${hints_line#hints:}"
+      hint_accum="${hint_accum#"${hint_accum%%[![:space:]]*}"}"
+      if [ -z "$hint_accum" ] || [ "$hint_accum" = "none" ]; then
+        hint_accum="address findings, add boundary coverage, use parameterized statements"
+      fi
+      fixes_used=$((fixes_used + 1))
+      echo "Gate not met (score $score_val <8), hint for next ($fixes_used/$MAX_FIXES): $hint_accum" | tee -a "$run_log"
+    else
+      # --max-fixes cap reached: stop re-injecting hints, keep iterating
+      hint_accum=""
+      echo "Gate not met (score $score_val <8), max fixes ($MAX_FIXES) reached - continuing without new hints" | tee -a "$run_log"
     fi
-    echo "Gate not met (score $score_val <8), hint for next: $hint_accum" | tee -a "$run_log"
   fi
 
   rm -f "$findings_tmp" "$critic_out"
 
   # If last iteration, ensure log has final score
-  if [ "$i" -eq 4 ]; then
-    echo "Max iterations (4) reached with score $final_score" | tee -a "$run_log"
+  if [ "$i" -eq "$MAX_ITERATIONS" ]; then
+    echo "Max iterations ($MAX_ITERATIONS) reached with score $final_score" | tee -a "$run_log"
   fi
+  i=$((i + 1))
 done
+
+# Feedback memory totals: run log + final output (never deletes feedback data)
+echo "learning: $TOTAL_SUPPRESSED suppressed ($TOTAL_BELOW_FLOOR below floor)" | tee -a "$run_log"
+
+# Team rules totals: run log + final output (always printed; 'rules: 0 active' when none)
+echo "rules: $RULES_COUNT active" | tee -a "$run_log"
 
 # Ensure run log contains score: line for grep verification
 if ! grep -qE "^score:" "$run_log" 2>/dev/null; then
