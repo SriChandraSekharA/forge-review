@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v2026.10.0] - 2026-10-28
+
+**Versioning:** switched from SemVer (`v1.1.3`) to **CalVer `YYYY.MM.PATCH`** per workspace mandate - this is the first CalVer release (`package.json` `version` is now `2026.10.0`); future entries group under `YYYY-MM`.
+
+A Greptile-inspired feature wave: the reviewer now learns from your feedback, enforces your team's plain-English rules, and traces blast radius beyond the diff. All implemented and covered by 22 pytest tests green.
+
+### Added
+
+- **Learning memory (Greptile "Memory & Learning" analog):** `scripts/learn.sh` CLI - `--dismiss --file <glob> --rule <regex> --reason <text>` records a dismissed finding class (deduped on path+rule), `--floor --severity <high|medium|low|nitpick> --reason <text>` records a learned severity floor, `--rule "<plain english>"` appends to `rules.md` (exact-line dedupe), `--rules` / `--list` print state. State lives in append-only `.forge-standard-review/feedback.jsonl` - never rewritten, invalid lines skipped. `review.sh` auto-applies it: matching dismissals suppressed, below-floor severities dropped, and the run prints `learning: N suppressed (M below floor)`.
+- **Custom team rules (Greptile "Custom Rules & Standards" analog):** `.forge-standard-review/rules.md` holds one `- <rule>` bullet per line (`#` comments ignored); created by `init.sh`, preserved by `merge.sh` (exact-line dedupe union), injected per iteration as `# review-rule:` markers, reported as `rules: N active`; violations are reported in citation format with a `rule violation:` tag.
+- **Blast radius (Greptile "graph context / beyond-the-diff" analog):** new `scripts/impact.sh --files <path[,path...]>` (or stdin, one path per line) - local importer/caller tracing (`import`/`require`/`include`/`reference` kinds), caps 50 matches per file + 200 total, prints `IMPACT none` when empty, always exits 0, safe without a VCS. `report.sh` auto-integrates: a `## Impact (beyond the diff)` section appears in `report.md` before the ranked sections (omitted when none) and an additive `impact` key is written to `review.json` (backward compatible).
+- **`review.sh --tests <cmd>`** (TREX analog): runs the user's test command once per iteration; a failure injects one synthetic `[test/high]` finding plus the output tail so the loop reacts.
+- **Tests:** new `tests/test_e_learning.py` (6), `tests/test_f_impact.py` (5), `tests/test_g_portability.py` (3), `tests/test_h_rules.py` (4) on top of de-hardcoded `test_a..d` - 22 pytest tests green.
+
+### Changed
+
+- **`review.sh` flags:** `--max-iterations N` default 8 (was hardcoded 4 - docs and code now agree) and `--max-fixes N` default 4, capping hint re-injections across the loop.
+- **Portability/OSS:** all hardcoded `/Users/...` paths removed from scripts (script-relative resolution - the skill now installs anywhere).
+- **CI:** gained a uv+pytest job (`astral-sh/setup-uv` pinned) and a shellcheck job.
+- **Docs:** `SKILL.md` and `README.md` now document learning memory, team rules, blast radius, the new review flags, and the memory-files semantics (`feedback.jsonl` append-only, `rules.md` merge-preserved).
+
+### Fixed
+
+- Docs drift: loop-gate wording corrected to "max fixes across the loop" (was "per cycle"); stale `review.sh --severity` option line removed (the flag was never parsed).
+
 ## [v1.1.3] - 2026-09-07 IST
 
 **Release:** `v1.1.3: site SEO + sponsors + CI fixes + smoke workdir`

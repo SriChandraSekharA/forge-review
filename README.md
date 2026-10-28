@@ -33,7 +33,11 @@ git clone https://github.com/SriChandraSekharA/forge-standard-review.git
 
 - **Knowledge fallback chain** - resolves review standards from repo docs in priority order: `AGENTS.md` -> `CONTRIBUTING.md` -> `.github/copilot-instructions.md` -> `docs/agents/issue-tracker.md` -> Fowler reference note.
 - **VCS-aware** - detects `git` || `hg` || `none` and degrades gracefully; staged, range, and file modes work across all three.
-- **Loop gate 8 max4** - iterates up to 8 cycles, at most 4 auto-fix attempts per cycle; deterministic stop gate prevents infinite loops.
+- **Loop gate 8 max4** - iterates up to 8 cycles, at most 4 hint re-injections across the loop (`--max-iterations` / `--max-fixes`, both configurable); deterministic stop gate prevents infinite loops.
+- **Learning memory** - `learn.sh` records dismissed finding classes and severity floors in append-only `.forge-standard-review/feedback.jsonl`; `review.sh` applies them automatically and prints `learning: N suppressed (M below floor)`. Never destroys data.
+- **Custom team rules** - plain-English standards live in `.forge-standard-review/rules.md` (one `- <rule>` per line, `#` comments ignored), injected into every iteration and reported as `rules: N active`; violations surface in citation format tagged `rule violation:`. Merge-preserved with exact-line dedupe.
+- **Blast radius** - `impact.sh` traces local importers/callers beyond the diff; `report.md` gains an `## Impact (beyond the diff)` section (before the ranked sections) and `review.json` an additive `impact` array.
+- **Test-gated loop** - `review.sh --tests CMD` runs your test command once per iteration; a failure injects one synthetic `[test/high]` finding plus the output tail so the loop reacts.
 - **Ranked report** - findings ordered `critical -> high -> medium -> low -> nitpick` with file:line, severity, and actionable fix hints.
 - **Idempotent memory** - `.forge-standard-review/` is created on first invocation and reused/updated thereafter; per-repo isolation, never committed.
 - **Fully offline** - no API keys, no network calls, no hidden uploads; all analysis runs locally via bash scripts.
@@ -46,6 +50,14 @@ git clone https://github.com/SriChandraSekharA/forge-standard-review.git
 ./scripts/review.sh --range HEAD~1..HEAD
 ./scripts/review.sh --file path/to/file.ts
 ./scripts/report.sh --format markdown --output review.md
+```
+
+Teach the reviewer once - it persists in per-repo memory and applies on every run:
+
+```bash
+./scripts/learn.sh --dismiss --file "dist/**" --rule "minified artifact" --reason "generated code, not hand-edited"
+./scripts/learn.sh --floor --severity medium --reason "release gate: block on medium+ only"
+./scripts/learn.sh --rule "prefer early returns over nested conditionals"
 ```
 
 ## Demo

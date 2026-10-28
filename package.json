@@ -1,6 +1,6 @@
 {
   "name": "forge-standard-review",
-  "version": "1.0.0",
+  "version": "2026.10.0",
   "description": "Quota-free iterative code review with continuous loop, architecture review, security review, vulnerability review, OWASP review, correctness review, readability review, performance review, code quality review, review loop, iterative review, multi reviewer, git diff review, standards review, spec review, SOLID review — idempotent .forge-standard-review/ per-repo memory",
   "keywords": [
     "code-review",

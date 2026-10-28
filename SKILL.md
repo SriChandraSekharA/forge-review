@@ -1,6 +1,6 @@
 ---
 name: forge-standard-review
-description: "Quota-free iterative code review with continuous loop, architecture review, security review, vulnerability review, OWASP review, correctness review, readability review, performance review, code quality review, review loop, iterative review, multi reviewer, git diff review, standards review, spec review, SOLID review - idempotent .forge-standard-review/ per-repo memory"
+description: "Quota-free iterative code review with continuous loop, architecture review, security review, vulnerability review, OWASP review, correctness review, readability review, performance review, code quality review, review loop, iterative review, multi reviewer, git diff review, standards review, spec review, SOLID review, learning memory, custom rules, blast radius, impact analysis - idempotent .forge-standard-review/ per-repo memory"
 ---
 
 # Forge Standard Review
@@ -19,8 +19,10 @@ per-repo memory that persists across invocations.
 Core principles:
 
 - **Quota-free** - no API keys, no usage caps, no network gate.
-- **Loop-gated** - iterates up to 8 cycles, at most 4 auto-fix attempts per cycle.
+- **Loop-gated** - iterates up to 8 cycles, at most 4 hint re-injections across the loop (both configurable).
 - **Ranked report** - findings ordered critical -> high -> medium -> low -> nitpick.
+- **Learning memory** - dismissed findings, severity floors, and plain-English team rules persist per-repo and apply automatically on every run.
+- **Blast radius** - importer/caller tracing beyond the diff feeds the report.
 - **Idempotent memory** - per-repo `.forge-standard-review/` is created once and reused.
 - **VCS-aware** - works with git, hg, or no VCS (degrades gracefully).
 
@@ -55,7 +57,8 @@ After install the skill is available as `forge-standard-review` via `npx skills 
 The skill follows a strict idempotent contract anchored at `.forge-standard-review/`:
 
 1. **First invocation** - `init` creates `.forge-standard-review/` at the repo root
-   with baseline config, checklist snapshot, and knowledge fallback manifest.
+   with baseline config, checklist snapshot, knowledge fallback manifest, and
+   empty learning memory (`feedback.jsonl`, `rules.md`).
 2. **Reuse thereafter** - every subsequent invocation reads the existing
    `.forge-standard-review/` directory, reuses stored state, and updates only what
    changed (findings, iteration counter, timestamps).
@@ -68,6 +71,20 @@ The skill follows a strict idempotent contract anchored at `.forge-standard-revi
 
 This contract guarantees the loop can be re-entered safely any number of times
 without duplicating state or losing prior decisions.
+
+### Memory files
+
+| File | Semantics |
+|------|-----------|
+| `state.json` | manifest; `lastReviewAt` refreshed per invocation, CUSTOM blocks and reviews preserved via merge |
+| `history.md` | git history snapshot per invocation |
+| `learning.md` | iteration scores; append-only, never truncated on re-init |
+| `test_context.md` | detected test files and discovery output |
+| `checklist.md` / `knowledge.md` | checklist snapshot and knowledge fallback manifest |
+| `feedback.jsonl` | learning memory - append-only JSONL of dismissed finding classes and severity floors (`learn.sh` writes, `review.sh` consumes); never rewritten, invalid lines skipped |
+| `rules.md` | plain-English team rules - one `- <rule>` per line, `#` comments ignored; created by `init.sh`, preserved by `merge.sh` (exact-line dedupe union) |
+| `report.md` / `review.json` | ranked report artifacts; `review.json` carries an additive `impact` array |
+| `run-<ts>-<pid>.log` | per-run loop log (suppressions, fixes, gate status) |
 
 ## Prerequisites
 
@@ -115,11 +132,39 @@ Modes:
 
 Options:
 
-- `--max-iterations 8` - cap loop iterations (default 8, alias loop gate 8).
-- `--max-fixes 4` - cap auto-fix attempts per iteration (default 4, alias max4).
-- `--severity critical,high` - filter report by severity.
+- `--max-iterations N` - cap loop iterations (default 8, alias loop gate 8).
+- `--max-fixes N` - cap hint re-injections across the loop (default 4); when reached, the loop keeps iterating without injecting new hints.
+- `--tests CMD` - run CMD (via `bash -c`) once per iteration after critic scoring; a non-zero exit injects one synthetic `[test/high]` finding plus the output tail so the loop reacts to test failures (no retries).
 
-### 3. Report
+On every run the loop applies learned memory automatically: matching dismissals are suppressed, findings below the learned severity floor are dropped, and the run prints `learning: N suppressed (M below floor)` plus `rules: N active`.
+
+### 3. Learn (feedback memory)
+
+```bash
+./scripts/learn.sh --dismiss --file <glob-or-path> --rule <regex> --reason <text>
+./scripts/learn.sh --floor --severity <high|medium|low|nitpick> --reason <text>
+./scripts/learn.sh --rule "<plain-English team rule>"
+./scripts/learn.sh --rules    # list active team rules
+./scripts/learn.sh --list     # list learned feedback
+```
+
+- `--dismiss` - record a dismissed finding class (path glob or literal + reason regex); deduped on path+rule.
+- `--floor` - record a learned severity floor; findings strictly below it are dropped.
+- `--rule` - append a plain-English team rule to `.forge-standard-review/rules.md` (exact-line dedupe).
+- `--rules` / `--list` - print active team rules / learned feedback.
+
+Memory is append-only JSONL - never rewritten or destroyed, invalid lines skipped. An optional trailing `TARGET_DIR` positional overrides the default script-relative repo root.
+
+### 4. Impact (blast radius)
+
+```bash
+./scripts/impact.sh --files src/a.ts,src/b.ts
+git diff --name-only main...HEAD | ./scripts/impact.sh   # one path per line on stdin
+```
+
+Local importer/caller tracing beyond the diff (`import`/`require`/`include`/`reference` kinds), capped at 50 matches per changed file and 200 total, then one `... N more` line. Prints `IMPACT none` when empty, always exits 0, and is safe without a VCS. `report.sh` integrates it automatically: a `## Impact (beyond the diff)` section appears in `report.md` before the ranked sections (omitted when none) and an additive `impact` array is written to `review.json` (backward compatible).
+
+### 5. Report
 
 ```bash
 ./scripts/report.sh
@@ -127,8 +172,7 @@ Options:
 ./scripts/report.sh --format markdown --output review.md
 ```
 
-Generates the ranked report ordered critical -> high -> medium -> low -> nitpick.
-No tokens, no external calls, no hidden uploads.
+Generates the ranked report ordered critical -> high -> medium -> low -> nitpick, including the impact section and learned-rule coverage. No tokens, no external calls, no hidden uploads.
 
 ## Structure
 
@@ -142,6 +186,8 @@ forge-standard-review/
     init.sh               # idempotent .forge-standard-review/ bootstrap
     review.sh             # staged | range | file review loop
     report.sh             # ranked report generator
+    learn.sh              # feedback memory CLI (dismissals, severity floors, team rules)
+    impact.sh             # blast-radius tracing beyond the diff
   references/
     checklist.md          # 6-axis checklist (correctness/readability/arch/security/perf/test coverage)
     knowledge.md          # fallback chain priority list
