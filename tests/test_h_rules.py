@@ -23,8 +23,9 @@ def make_review_repo(tmp):
     run("git config user.email test@test.com", cwd=tmp)
     run("git config user.name test", cwd=tmp)
     (tmp / "scripts").mkdir()
-    for name in ("review.sh", "critic.sh", "learn.sh"):
-        shutil.copy2(SCRIPTS / name, tmp / "scripts" / name)
+    # copy every script: review.sh orchestrates detect.sh + critic.sh script-relatively
+    for script in sorted(SCRIPTS.glob("*.sh")):
+        shutil.copy2(script, tmp / "scripts" / script.name)
     return tmp
 
 

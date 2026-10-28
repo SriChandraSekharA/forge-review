@@ -127,7 +127,7 @@ impact_more="$(grep -E '^\.\.\. [0-9]+ more$' "$tmp_impact" 2>/dev/null | head -
           fi
         fi
         if echo "$reason" | grep -qiE "typo.*test|test.*typo"; then sev="low"; fi
-        if ! echo "$reason" | grep -qiE "CWE|OWASP|Fowler"; then case "$sev" in critical) reason="$reason (CWE-89 / OWASP A03: Injection)" ;; high) reason="$reason (CWE-20 / Fowler Long Method)" ;; medium) reason="$reason (Fowler Code Smell)" ;; low) reason="$reason (Fowler Readability)" ;; nitpick) reason="$reason (Fowler Style)" ;; esac; fi
+        # Tags are never invented: only a detector-supplied CWE/OWASP/Fowler tag survives.
         fix=$(echo "$raw" | sed -n 's/.*->[[:space:]]*//p' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
         [ -z "$fix" ] && fix="apply checklist guidance for $sev"
         if echo "$reason" | grep -qiE "test coverage|missing test|brittle mock|coverage gap"; then
@@ -160,7 +160,7 @@ if [ -s "$tmp_sorted" ]; then
       fi
     fi
     if echo "$reason" | grep -qiE "typo.*test|test.*typo"; then sev="low"; fi
-    if ! echo "$reason" | grep -qiE "CWE|OWASP|Fowler"; then case "$sev" in critical) reason="$reason (CWE-89 / OWASP A03: Injection)" ;; high) reason="$reason (CWE-20 / Fowler Long Method)" ;; medium) reason="$reason (Fowler Code Smell)" ;; low) reason="$reason (Fowler Readability)" ;; nitpick) reason="$reason (Fowler Style)" ;; esac; fi
+    # Tags are never invented: only a detector-supplied CWE/OWASP/Fowler tag survives.
     fix=$(echo "$raw" | sed -n 's/.*->[[:space:]]*//p' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     [ -z "$fix" ] && fix="apply checklist guidance for $sev"
     if echo "$reason" | grep -qiE "test coverage|missing test|brittle mock|coverage gap"; then

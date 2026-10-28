@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# feat: worker->critic loop gate 8 max4 - continuous loop 8 cycles, up to 4 hint re-injections, monotonic learning.md append
+# feat: hunk-aware findings + severity-cap score - real file:line from diff hunk headers;
+# score is a pure function of findings (critical 3 / high 5 / medium 7 / low-nitpick 8-10);
+# loop stops when the finding set converges instead of counting up to a cap.
+# feat: worker->critic loop gate 8 max4 - monotonic learning.md append
 
 # review.sh - Worker->Critic loop gate 8 max 4, local only
 # Usage:
@@ -134,9 +137,18 @@ get_diff() {
           # untracked or staged file: show staged or file content as added diff
           git diff --staged -- "$file_path" > "$out" 2>/dev/null || true
           if [ ! -s "$out" ]; then
-            echo "diff --git a/$file_path b/$file_path" > "$out"
-            echo "+++ b/$file_path" >> "$out"
-            cat "$file_path" >> "$out" 2>/dev/null || true
+            # Synthesize a REAL unified-diff header (with hunk range) so added lines
+            # map to their true 1-based line numbers instead of collapsing to 1.
+            _file_lines=$(grep -c '' "$file_path" 2>/dev/null || echo 0)
+            case "$_file_lines" in ''|*[!0-9]*) _file_lines=0 ;; esac
+            {
+              echo "diff --git a/$file_path b/$file_path"
+              echo "new file mode 100644"
+              echo "--- /dev/null"
+              echo "+++ b/$file_path"
+              echo "@@ -0,0 +1,$_file_lines @@"
+              cat "$file_path" 2>/dev/null || true
+            } > "$out"
           fi
         fi
       else
@@ -316,82 +328,16 @@ run_log="$out_dir/run-${ts}-$$.log"
 # nothing appended when no rules are active)
 printf '%s' "$RULES_CONTEXT" >> "$run_log"
 
-# Helper: worker heuristic scan (local, no API)
+# --- Detection engine ---
+# Detection lives in scripts/detect.sh (hunk-aware flattening + local rules).
+# review.sh only orchestrates and must never re-implement detection.
+detect_script="$script_dir/detect.sh"
+if [ ! -f "$detect_script" ]; then
+  echo "error: detect.sh not found next to review.sh ($detect_script)" >&2
+  exit 2
+fi
 run_worker() {
-  local diff_in="$1"
-  local findings_out="$2"
-  local iter="$3"
-  : > "$findings_out"
-  # Each grep emits a finding line; use diff content
-  # 1) TODO / FIXME / HACK
-  if grep -qE "TODO|FIXME|HACK" "$diff_in" 2>/dev/null; then
-    grep -nE "TODO|FIXME|HACK" "$diff_in" 2>/dev/null | head -20 | while IFS= read -r line; do
-      # extract file context if possible from diff hunk headers
-      echo "L: diff:${line%%:*} [readability/medium] TODO/FIXME left - remove or ticket -> fix hint: resolve TODO" >> "$findings_out"
-    done
-  fi
-  # 2) console.log / console.debug
-  if grep -qE "console\.log|console\.debug" "$diff_in" 2>/dev/null; then
-    grep -nE "console\.log|console\.debug" "$diff_in" 2>/dev/null | head -20 | while IFS= read -r line; do
-      echo "L: diff:${line%%:*} [readability/low] console.log leftover - use structured logger -> fix hint: remove console.log" >> "$findings_out"
-    done
-  fi
-  # 3) SQL injection
-  if grep -qiE "sql injection|SELECT.*\+|query\(.*\+|sql = \"" "$diff_in" 2>/dev/null; then
-    grep -inE "sql injection|SELECT.*\+|query\(.*\+|sql = \"" "$diff_in" 2>/dev/null | head -20 | while IFS= read -r line; do
-      echo "L: diff:${line%%:*} [security/critical] possible SQL injection (CWE-89) -> fix hint: use parameterized query" >> "$findings_out"
-    done
-  fi
-  # 4) empty catch
-  if grep -qE "catch[[:space:]]*\(.*\)[[:space:]]*\{[[:space:]]*\}|except:[[:space:]]*pass|catch.*\{\}" "$diff_in" 2>/dev/null; then
-    grep -nE "catch[[:space:]]*\(.*\)[[:space:]]*\{[[:space:]]*\}|except:[[:space:]]*pass" "$diff_in" 2>/dev/null | head -20 | while IFS= read -r line; do
-      echo "L: diff:${line%%:*} [correctness/high] empty catch swallows error -> fix hint: handle typed error or rethrow" >> "$findings_out"
-    done
-    # also generic empty catch block detection
-    if grep -qE "catch" "$diff_in" 2>/dev/null && grep -qE "\{\s*\}" "$diff_in" 2>/dev/null; then
-      echo "L: diff:1 [correctness/high] empty catch block detected -> fix hint: add error handling" >> "$findings_out"
-    fi
-  fi
-  # 5) long function (>50 added lines contiguous)
-  added_lines=$(grep -cE "^\+[^+]" "$diff_in" 2>/dev/null || echo 0)
-  # wc -l may include empty; trim
-  added_lines=$(echo "$added_lines" | tr -d ' ')
-  if [ "$added_lines" -gt 50 ] 2>/dev/null; then
-    echo "L: diff:1 [architecture/medium] long function / large diff ($added_lines added lines) - split by intent (Fowler Long Method) -> fix hint: extract functions <50 lines" >> "$findings_out"
-  fi
-  # 6) test quality/coverage - axis 6, only when tests exist (TESTS_PRESENT)
-  if [ "${TESTS_PRESENT:-0}" -eq 1 ]; then
-    if grep -qE "\.ts|\.js|\.py" "$diff_in" 2>/dev/null; then
-      if ! grep -qE "test|spec|__test__" "$diff_in" 2>/dev/null; then
-        echo "L: diff:1 [correctness/high] missing test coverage for changed code - changed src without test update -> fix hint: add test for changed code: e.g. tests/test_foo.py covering boundary and failure cases" >> "$findings_out"
-      fi
-    fi
-    if grep -qE "^\-\-\- a/.*(test|spec)" "$diff_in" 2>/dev/null || grep -qE "deleted file mode.*test" "$diff_in" 2>/dev/null; then
-      echo "L: diff:1 [correctness/high] test deletion detected - removing tests to fake green is forbidden -> fix hint: restore tests and fix code instead" >> "$findings_out"
-    fi
-    if grep -qiE "mock" "$diff_in" 2>/dev/null; then
-      if ! grep -qiE "assert|expect|edge|boundary" "$diff_in" 2>/dev/null; then
-        echo "L: diff:1 [correctness/medium] brittle mocks without edge cases - mocks lack assertions for failure paths -> fix hint: add edge case test with realistic mock and assert failure branch" >> "$findings_out"
-      fi
-    fi
-    _added_test=$(grep -cE "^\+[^+]" "$diff_in" 2>/dev/null || echo 0)
-    _added_test=$(echo "$_added_test" | tr -d ' ')
-    if [ "$_added_test" -gt 10 ] 2>/dev/null; then
-      if ! grep -qE "edge|boundary|failure|error" "$diff_in" 2>/dev/null; then
-        if ! grep -qE "test|spec" "$diff_in" 2>/dev/null; then
-          echo "L: diff:1 [correctness/medium] test coverage gap - no edge case tests for changed code with $_added_test added lines -> fix hint: add test covering boundary, branch, and failure cases for changed logic" >> "$findings_out"
-        fi
-      fi
-    fi
-  else
-    :
-  fi
-  # 7) injection hints for later iterations (dedup later)
-  if [ "$iter" -gt 1 ] && [ ! -s "$findings_out" ]; then
-    echo "L: diff:1 [readability/low] iteration $iter polish - consider docs/comments -> fix hint: add why-comments" >> "$findings_out"
-  fi
-  # Ensure at least one finding for empty diff case gets minimal
-  # (do not add artificial failure for empty - let critic score high)
+  TESTS_PRESENT="${TESTS_PRESENT:-0}" bash "$detect_script" "$1" "$2"
 }
 
 # --- Feedback memory (Greptile-inspired learned feedback) ---
@@ -535,6 +481,8 @@ hint_accum=""
 TOTAL_SUPPRESSED=0
 TOTAL_BELOW_FLOOR=0
 fixes_used=0
+prev_sig=""
+stop_loop=0
 
 load_feedback_memory "$out_dir/feedback.jsonl"
 
@@ -574,21 +522,15 @@ while [ "$i" -le "$MAX_ITERATIONS" ]; do
   set -o pipefail
   if ! echo "$findings_count" | grep -qE "^[0-9]+$"; then findings_count=0; fi
 
-  # Run critic scoring
+  # Run critic scoring. critic.sh is a required sibling script: it is the only
+  # scorer (no inline duplicate that could drift or reintroduce a rising floor).
   critic_script="$script_dir/critic.sh"
-  if [ -f "$critic_script" ]; then
-    bash "$critic_script" "$findings_tmp" "$i" > "$critic_out" 2>/dev/null || true
-  else
-    # inline fallback
-    score_calc=$((10 - findings_count + i - 1))
-    if [ "$score_calc" -lt 1 ]; then score_calc=1; fi
-    if [ "$score_calc" -gt 10 ]; then score_calc=10; fi
-    min_iter=$((6 + i - 1))
-    if [ "$min_iter" -gt 10 ]; then min_iter=10; fi
-    if [ "$score_calc" -lt "$min_iter" ]; then score_calc=$min_iter; fi
-    echo "score: $score_calc" > "$critic_out"
-    echo "feedback: heuristic $findings_count findings" >> "$critic_out"
+  if [ ! -f "$critic_script" ]; then
+    echo "error: critic.sh not found next to review.sh ($critic_script)" >&2
+    rm -f "$findings_tmp" "$critic_out"
+    exit 2
   fi
+  bash "$critic_script" "$findings_tmp" "$i" > "$critic_out" 2>/dev/null || true
 
   score_line=$(grep -E "^score:[[:space:]]*[0-9]+" "$critic_out" | head -1 || echo "score: 6")
   score_val=$(echo "$score_line" | grep -oE "[0-9]+" | head -1)
@@ -640,6 +582,7 @@ while [ "$i" -le "$MAX_ITERATIONS" ]; do
   echo "Iteration $i: $score_line ($findings_count findings)"
 
   final_score=$score_val
+  cur_sig="$(cksum < "$findings_tmp" 2>/dev/null || echo none)"
 
   # Gate check
   if [ "$score_val" -ge 8 ]; then
@@ -660,9 +603,21 @@ while [ "$i" -le "$MAX_ITERATIONS" ]; do
       hint_accum=""
       echo "Gate not met (score $score_val <8), max fixes ($MAX_FIXES) reached - continuing without new hints" | tee -a "$run_log"
     fi
+    # Converged: the finding set is byte-identical to the previous iteration.
+    # Nothing in this loop mutates code, so an unchanged set can only repeat;
+    # stop instead of spending iterations to reach a cap.
+    if [ "$i" -gt 1 ] && [ -n "$prev_sig" ] && [ "$cur_sig" = "$prev_sig" ]; then
+      echo "converged: findings unchanged since iteration $((i - 1)) - stopping" | tee -a "$run_log"
+      stop_loop=1
+    fi
+    prev_sig="$cur_sig"
   fi
 
   rm -f "$findings_tmp" "$critic_out"
+
+  if [ "$stop_loop" -eq 1 ]; then
+    break
+  fi
 
   # If last iteration, ensure log has final score
   if [ "$i" -eq "$MAX_ITERATIONS" ]; then

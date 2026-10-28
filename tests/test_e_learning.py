@@ -24,8 +24,9 @@ def make_repo(tmp):
     run("git config user.email test@test.com", cwd=tmp)
     run("git config user.name test", cwd=tmp)
     (tmp / "scripts").mkdir()
-    for name in ("review.sh", "critic.sh", "learn.sh"):
-        shutil.copy2(SCRIPTS / name, tmp / "scripts" / name)
+    # copy every script: review.sh orchestrates detect.sh + critic.sh script-relatively
+    for script in sorted(SCRIPTS.glob("*.sh")):
+        shutil.copy2(script, tmp / "scripts" / script.name)
     return tmp
 
 
@@ -54,7 +55,7 @@ def test_e_dismiss_suppresses_matching_only(tmp_path):
     tmp.mkdir()
     make_repo(tmp)
     stage_diff(tmp)
-    r = run("bash scripts/learn.sh --dismiss --file 'diff*' --rule 'console\\.log' --reason 'noise'", cwd=tmp)
+    r = run("bash scripts/learn.sh --dismiss --file 'app.js' --rule 'console\\.log' --reason 'noise'", cwd=tmp)
     assert r.returncode == 0, r.stderr
     assert "learned:" in r.stdout, r.stdout
     r = run("bash scripts/review.sh --staged --max-iterations 1", cwd=tmp)
@@ -90,7 +91,7 @@ def test_e_max_iterations_one(tmp_path):
     tmp = tmp_path / "iters"
     tmp.mkdir()
     make_repo(tmp)
-    # 4 heuristic findings -> critic score 6 < 8 (gate fails), so the stop is the cap, not the gate
+    # findings include an empty catch (high) -> severity-cap score 5 < 8 (gate fails), so the stop is the cap, not the gate
     (tmp / "app.js").write_text(
         "function f() {\n  console.log('debug');\n  // TODO: handle error\n"
         "  try { g(); } catch (e) {}\n  return 1;\n}\n"

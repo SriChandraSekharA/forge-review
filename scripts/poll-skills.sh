@@ -30,7 +30,6 @@ URL_B_LC="https://www.skills.sh/srichandrasekhara/forge-standard-review"
 
 timestamp_utc="$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u 2>/dev/null)"
 timestamp_ist="$(TZ='Asia/Kolkata' date +"%Y-%m-%dT%H:%M:%S %Z %z" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%S IST" 2>/dev/null)"
-timestamp_utc_ist="${timestamp_utc} (${timestamp_ist})"
 
 echo "=== skills.sh poll ==="
 echo "Timestamp UTC: ${timestamp_utc}"
