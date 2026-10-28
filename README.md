@@ -33,7 +33,9 @@ git clone https://github.com/SriChandraSekharA/forge-standard-review.git
 
 - **Knowledge fallback chain** - resolves review standards from repo docs in priority order: `AGENTS.md` -> `CONTRIBUTING.md` -> `.github/copilot-instructions.md` -> `docs/agents/issue-tracker.md` -> Fowler reference note.
 - **VCS-aware** - detects `git` || `hg` || `none` and degrades gracefully; staged, range, and file modes work across all three.
-- **Loop gate 8 max4** - iterates up to 8 cycles, at most 4 hint re-injections across the loop (`--max-iterations` / `--max-fixes`, both configurable); deterministic stop gate prevents infinite loops.
+- **Severity-cap score** - the score is a pure function of the findings, never of the loop counter: any critical caps it at 3, high at 5, medium at 7; only low/nitpick can reach 8-10. Scores can only change when findings change.
+- **Hunk-aware findings** - every finding carries the real `path:line` from the diff hunk header (`src/foo.py:87`), not an offset into the diff text.
+- **Convergence stop** - the loop halts as soon as the finding set stops changing instead of counting up to a cap (`--max-iterations` / `--max-fixes` still bound it).
 - **Learning memory** - `learn.sh` records dismissed finding classes and severity floors in append-only `.forge-standard-review/feedback.jsonl`; `review.sh` applies them automatically and prints `learning: N suppressed (M below floor)`. Never destroys data.
 - **Custom team rules** - plain-English standards live in `.forge-standard-review/rules.md` (one `- <rule>` per line, `#` comments ignored), injected into every iteration and reported as `rules: N active`; violations surface in citation format tagged `rule violation:`. Merge-preserved with exact-line dedupe.
 - **Blast radius** - `impact.sh` traces local importers/callers beyond the diff; `report.md` gains an `## Impact (beyond the diff)` section (before the ranked sections) and `review.json` an additive `impact` array.
@@ -140,9 +142,12 @@ def5678 fix: handle null
 - **learning.md iteration line** (appended on each review loop iteration):
 
 ```
-## 2026-09-05T03:45:00+05:30 Iteration 1 score: 8
-## 2026-09-05T03:45:00+05:30 Iteration 2 score: 9
+## 2026-09-05T03:45:00+05:30 Iteration 1 score: 5
+## 2026-09-05T03:45:00+05:30 Iteration 2 score: 5
 ```
+
+An unchanged finding set produces an unchanged score - that is the point: a higher score
+means fewer/smaller findings, not a longer loop.
 
 `learning.md` is append-only and never truncated on re-init.
 

@@ -1,6 +1,7 @@
 # Review Checklist: 6-Axis (forge-standard-review)
 
 > Ranked report: critical -> high -> medium -> low -> nitpick. Gate 8/10.
+> The score is a severity cap, not a loop counter: critical 3, high 5, medium 7, low/nitpick 8-10.
 > Axes: correctness, readability/arch, security, performance, test coverage (axis 6: missing tests, brittle mocks, edge cases).
 > User customizations: wrap additions between `# USER CUSTOM START` and `# USER CUSTOM END` - preserved on merge. Lines containing `CUSTOM` are also preserved via diff fallback (see scripts/merge.sh).
 
@@ -52,7 +53,8 @@ Detection guards (non-failing, per `scripts/review.sh` TEST_AWARE block):
 
 - Severity: critical breaks build or is exploitable, high is likely bug, medium is useful fix with moderate risk, low is polish, nitpick is style preference.
 - Map test findings: missing tests for critical code -> high, coverage gap / brittle mocks -> medium, typo in test -> low, test deletion -> high (see Test Coverage above).
-- Score 1-10 per finding, gate 8 to pass. Loop up to 8 iterations, at most 4 fixes each.
+- Gate 8 to pass. Any critical caps the run score at 3, high at 5, medium at 7; only low/nitpick can pass.
+  The loop stops when findings converge (hard cap: 8 iterations, 4 hint re-injections).
 - Order findings critical first, then high, medium, low, nitpick.
 
 ## BAD / GOOD Pairs
