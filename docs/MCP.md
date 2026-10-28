@@ -49,7 +49,7 @@ Client config for Claude Desktop (`examples/claude-config.json`):
     "forge-standard-review": {
       "command": "node",
       "args": ["mcp/dist/server.js"],
-      "cwd": "~/projects/forge-standard-review"
+      "cwd": "/absolute/path/to/forge-standard-review"
     }
   }
 }

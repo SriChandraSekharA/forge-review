@@ -1,19 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # Task 8.2 skills.sh Polling Harness — 2026-09-05
-# Workdir: "~/projects/forge-standard-review" HEAD c9724d5 tag v1.1.0 cb1fa70
 # Purpose: poll https://skills.sh/SriChandraSekharA/forge-standard-review (308→www) without tight loop;
 #          404 with NEXT_HTTP_ERROR_FALLBACK is pending <24h, not publish failure.
 #          Direct npx add -l Found 1 skill is truth.
-# Usage: bash "~/projects/forge-standard-review/scripts/poll-skills.sh"
+# Usage: bash scripts/poll-skills.sh
 #        Re-run manually; no loop. Logs to .omo/verify.log, .omo/notepad.md, durable.
+# Portable: every path derives from this script's location, so a cloned repo at any
+# path works with no edits.
 
-WORKDIR="~/projects/forge-standard-review"
-DURABLE="/var/folders/4l/6c2fc7hj6sn1b4sqf9j_wwkc0000gn/T/ulw-20260905-XXXXXX.md.xxFgv7WX6G"
-VERIFY_LOG="~/projects/forge-standard-review/.omo/verify.log"
-NOTEPAD="~/projects/forge-standard-review/.omo/notepad.md"
-TMP_BODY="/tmp/skills_body.html"
-TMP_BODY_WWW="/tmp/skills_body_www.html"
+# Repo root = parent of the directory holding this script
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+repo_root="$(cd "$script_dir/.." && pwd)"
+
+WORKDIR="${WORKDIR:-$repo_root}"
+VERIFY_LOG="${VERIFY_LOG:-$repo_root/.omo/verify.log}"
+NOTEPAD="${NOTEPAD:-$repo_root/.omo/notepad.md}"
+DURABLE="${DURABLE:-$repo_root/.omo/skills_poll_durable.md}"
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+TMP_BODY="$TMP_DIR/skills_body.html"
+TMP_BODY_WWW="$TMP_DIR/skills_body_www.html"
 
 URL_A="https://skills.sh/SriChandraSekharA/forge-standard-review"
 URL_B="https://www.skills.sh/SriChandraSekharA/forge-standard-review"
@@ -68,7 +75,7 @@ poll_url() {
   echo "# Poll: ${url}"
   rm -f "${tmp}" 2>/dev/null || true
   if command -v curl >/dev/null 2>&1; then
-    # exact tool hint: curl -s -o /tmp/skills_body.html -w HTTP_CODE:%{http_code} EFFECTIVE_URL:%{url_effective} -L
+    # exact tool hint: curl -s -o <tmp>/skills_body.html -w HTTP_CODE:%{http_code} EFFECTIVE_URL:%{url_effective} -L
     curl -s -o "${tmp}" -w "HTTP_CODE:%{http_code} EFFECTIVE_URL:%{url_effective}\n" -L "${url}" 2>&1 || true
     echo "--- body head ---"
     head -n 40 "${tmp}" 2>/dev/null | tr -d '\r' | head -n 40 || true
@@ -91,8 +98,8 @@ poll_url() {
 poll_url "${URL_A}" "${TMP_BODY}"
 poll_url "${URL_B}" "${TMP_BODY_WWW}"
 # also poll lowercase explicitly (same effective URL after redirect, but log intent)
-poll_url "${URL_A_LC}" "/tmp/skills_body_lc.html"
-poll_url "${URL_B_LC}" "/tmp/skills_body_www_lc.html"
+poll_url "${URL_A_LC}" "$TMP_DIR/skills_body_lc.html"
+poll_url "${URL_B_LC}" "$TMP_DIR/skills_body_www_lc.html"
 
 # --- npx --yes skills add fallback (local truth): Found 1 skill ---
 echo "## npx --yes skills add \"${WORKDIR}\" -l fallback (truth — Found 1 skill)"
@@ -125,7 +132,7 @@ fi
 echo ""
 echo "Remote check complete — if 404/NEXT_HTTP_ERROR_FALLBACK, propagation pending; retry after <24h via:"
 echo "  bash \"${WORKDIR}/scripts/poll-skills.sh\""
-echo "  curl -s -o /tmp/skills_body.html -w \"HTTP_CODE:%{http_code} EFFECTIVE_URL:%{url_effective}\" -L \"${URL_A}\""
+echo "  curl -s -o \"${TMP_BODY}\" -w \"HTTP_CODE:%{http_code} EFFECTIVE_URL:%{url_effective}\" -L \"${URL_A}\""
 echo "  curl -sI -L \"${URL_A}\" | grep HTTP"
 echo ""
 
@@ -159,14 +166,14 @@ log_target() {
     if command -v curl >/dev/null 2>&1; then
       echo "curl -sI -L ${URL_A} chain:"
       curl -sI -L "${URL_A}" 2>&1 | grep -i "^HTTP" | tr -d '\r' | head -n 10 || true
-      echo "curl -s -o /tmp/skills_body.html -w HTTP_CODE:%{http_code} EFFECTIVE_URL:%{url_effective} -L ${URL_A}:"
-      curl -s -o /tmp/skills_body_log.html -w "HTTP_CODE:%{http_code} EFFECTIVE_URL:%{url_effective}\n" -L "${URL_A}" 2>&1 | tr -d '\r' | head -n 5 || true
+      echo "curl -s -o ${TMP_BODY} -w HTTP_CODE:%{http_code} EFFECTIVE_URL:%{url_effective} -L ${URL_A}:"
+      curl -s -o "$TMP_DIR/skills_body_log.html" -w "HTTP_CODE:%{http_code} EFFECTIVE_URL:%{url_effective}\n" -L "${URL_A}" 2>&1 | tr -d '\r' | head -n 5 || true
       echo "og:title:"
-      grep -i "og:title" /tmp/skills_body_log.html 2>/dev/null | head -n 3 || grep -i "og:title" "${TMP_BODY}" 2>/dev/null | head -n 3 || echo "(no og:title)"
-      if grep -qi "NEXT_HTTP_ERROR_FALLBACK" /tmp/skills_body_log.html 2>/dev/null || grep -qi "NEXT_HTTP_ERROR_FALLBACK" "${TMP_BODY}" 2>/dev/null; then
+      grep -i "og:title" "$TMP_DIR/skills_body_log.html" 2>/dev/null | head -n 3 || grep -i "og:title" "${TMP_BODY}" 2>/dev/null | head -n 3 || echo "(no og:title)"
+      if grep -qi "NEXT_HTTP_ERROR_FALLBACK" "$TMP_DIR/skills_body_log.html" 2>/dev/null || grep -qi "NEXT_HTTP_ERROR_FALLBACK" "${TMP_BODY}" 2>/dev/null; then
         echo "NEXT_HTTP_ERROR_FALLBACK present (404 shell) — propagation pending <24h, not publish failure"
       fi
-      grep -i "srichandrasekhara/forge-standard-review" /tmp/skills_body_log.html 2>/dev/null | head -n 3 || grep -i "srichandrasekhara/forge-standard-review" "${TMP_BODY}" 2>/dev/null | head -n 3 || echo "(canonical lowercase not in body — check og:title)"
+      grep -i "srichandrasekhara/forge-standard-review" "$TMP_DIR/skills_body_log.html" 2>/dev/null | head -n 3 || grep -i "srichandrasekhara/forge-standard-review" "${TMP_BODY}" 2>/dev/null | head -n 3 || echo "(canonical lowercase not in body — check og:title)"
     fi
     echo "npx --yes skills add \"${WORKDIR}\" -l:"
     if command -v npx >/dev/null 2>&1; then

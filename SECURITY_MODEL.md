@@ -11,7 +11,7 @@ forge-standard-review is a local, offline code-review tool, distributed as an ag
 | **ci-supply-chain** | `.github/workflows/ci.yml`, `package.json`, `package-lock.json`, `mcp/package*.json`, `SKILL.md` | CI (`permissions: contents: read`, SHA-pinned actions), npm dependencies, skill/npm distribution. |
 | **docs-site** | `_config.yml`, `index.md`, `_includes/`, `assets/`, `robots.txt` | Jekyll GitHub Pages site, static, `theme.js` uses localStorage only. |
 | **maintainer-tooling** | `.omo/`, `scripts/poll-skills.sh`, `docs/` | Maintainer-run scripts and notes; `poll-skills.sh` is the only code that makes network calls (curl to skills.sh). |
-| **tests** | `tests/`, `mcp/tests/`, `fixture_test.js`, `vitest.config.ts` | Test code and fixtures. |
+| **tests** | `tests/` (incl. `tests/fixtures/`), `mcp/tests/`, `vitest.config.ts` | Test code and fixtures. |
 
 ## Trust boundaries and entry points
 1. **MCP client → mcp-server** (stdio): tool arguments come from an AI agent that may be prompt-injected by content it read. `range` is forwarded to `review.sh --range` and then to `git diff $range_val` unquoted (word splitting / git option injection, e.g. `--output=`); `workdir` is any path the process can reach (`path.resolve`, only an existence check); `file` is read and echoed into the review output. Resource reads resolve under the server's repo root.

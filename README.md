@@ -80,13 +80,13 @@ cat .forge-standard-review/review.json | jq
 `npx` validation (`npx --yes skills add <path> -l`):
 
 ```bash
-npx --yes skills add ~/projects/forge-standard-review -l
+npx --yes skills add /absolute/path/to/forge-standard-review -l
 ```
 
 Output (captured to `assets/npx-proof.txt`):
 
 ```
-Source: ~/projects/forge-standard-review
+Source: /absolute/path/to/forge-standard-review
 Local path validated
 Found 1 skill
 
@@ -195,7 +195,7 @@ Configure your MCP client with `mcp.json`:
     "forge-standard-review": {
       "command": "node",
       "args": ["mcp/dist/server.js"],
-      "cwd": "~/projects/forge-standard-review"
+      "cwd": "/absolute/path/to/forge-standard-review"
     }
   }
 }
@@ -216,7 +216,7 @@ No install needed, use the official inspector:
 npx @modelcontextprotocol/inspector node mcp/dist/server.js
 ```
 
-Then open `http://localhost:6274`, select Transport `STDIO`, Command `node`, Args `mcp/dist/server.js`, click Connect. `tools/list` should show `forge_review`. Try a call with `{ "mode": "staged", "workdir": "~/projects/forge-standard-review" }`.
+Then open `http://localhost:6274`, select Transport `STDIO`, Command `node`, Args `mcp/dist/server.js`, click Connect. `tools/list` should show `forge_review`. Try a call with `{ "mode": "staged", "workdir": "/absolute/path/to/your/repo" }`.
 
 CLI probe without UI:
 

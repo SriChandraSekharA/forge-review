@@ -5,3 +5,10 @@ roadmap.md
 .DS_Store
 node_modules/
 __pycache__/
+
+# Build artifacts (compiled from TypeScript sources, never committed)
+mcp/dist/
+mcp/vitest.config.js
+mcp/vitest.config.js.map
+mcp/vitest.config.d.ts
+mcp/vitest.config.d.ts.map
