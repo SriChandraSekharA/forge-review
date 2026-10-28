@@ -9,7 +9,7 @@ import json
 import tempfile
 import os
 
-REPO_ROOT = pathlib.Path("~/projects/forge-standard")
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 def run(cmd, cwd=None):
@@ -73,7 +73,7 @@ def test_c_regression(tmp_path):
     assert r_rev.returncode == 0, f"review.sh failed: {r_rev.stderr}"
     # review may have seeded a nitpick via typo; ensure learning.md has critical via SQLi
     # Manually ensure report will have critical before nitpick: append explicit findings
-    learning = work / ".forge-standard" / "learning.md"
+    learning = work / ".forge-standard-review" / "learning.md"
     if learning.exists():
         txt = learning.read_text()
         print(f"learning.md head 800: {txt[:800]}")
@@ -81,17 +81,17 @@ def test_c_regression(tmp_path):
     if not learning.exists() or "nitpick" not in learning.read_text().lower():
         with open(learning, "a") as f:
             f.write("L: fixture.js:4 [readability/nitpick] typo teh -> fix hint: correct to the (Fowler Style)\n")
-    assert (work / ".forge-standard" / "learning.md").exists()
+    assert (work / ".forge-standard-review" / "learning.md").exists()
 
     r_rep = run("bash ./scripts/report.sh 2>&1", cwd=work)
     print(f"report.sh: {r_rep.stdout[:1000]}")
-    report = (work / ".forge-standard" / "report.md").read_text() if (work / ".forge-standard" / "report.md").exists() else ""
-    review_json_text = (work / ".forge-standard" / "review.json").read_text() if (work / ".forge-standard" / "review.json").exists() else "{}"
+    report = (work / ".forge-standard-review" / "report.md").read_text() if (work / ".forge-standard-review" / "report.md").exists() else ""
+    review_json_text = (work / ".forge-standard-review" / "review.json").read_text() if (work / ".forge-standard-review" / "review.json").exists() else "{}"
     print(f"report.md head 1500:\n{report[:1500]}\nreview.json head 1000:\n{review_json_text[:1000]}")
     assert report, "report.md empty"
     # Pass: report.md order critical before nitpick (grep -n)
-    r_crit = run("grep -n -i critical .forge-standard/report.md | head -1", cwd=work)
-    r_nit = run("grep -n -i nitpick .forge-standard/report.md | head -1", cwd=work)
+    r_crit = run("grep -n -i critical .forge-standard-review/report.md | head -1", cwd=work)
+    r_nit = run("grep -n -i nitpick .forge-standard-review/report.md | head -1", cwd=work)
     print(f"crit line: {r_crit.stdout.strip()} nit line: {r_nit.stdout.strip()}")
     assert r_crit.stdout.strip(), "critical not found in report.md"
     assert r_nit.stdout.strip(), "nitpick not found in report.md"
@@ -120,11 +120,11 @@ def test_c_regression(tmp_path):
     if "critical" in sevs and "nitpick" in sevs:
         assert sevs.index("critical") < sevs.index("nitpick"), f"critical should be before nitpick in json: {sevs}"
     # validate json via jq
-    r_jq = run("jq . .forge-standard/review.json > /dev/null && echo jq_ok", cwd=work)
+    r_jq = run("jq . .forge-standard-review/review.json > /dev/null && echo jq_ok", cwd=work)
     assert "jq_ok" in r_jq.stdout, f"jq failed: {r_jq.stderr} {r_jq.stdout}"
 
     # Artifacts
-    ls_r = run("ls -R .forge-standard", cwd=work).stdout
-    head_rep = run("head -80 .forge-standard/report.md", cwd=work).stdout
-    jq_out = run("jq . .forge-standard/review.json 2>&1 | head -60", cwd=work).stdout
+    ls_r = run("ls -R .forge-standard-review", cwd=work).stdout
+    head_rep = run("head -80 .forge-standard-review/report.md", cwd=work).stdout
+    jq_out = run("jq . .forge-standard-review/review.json 2>&1 | head -60", cwd=work).stdout
     print(f"\nARTIFACT ls -R:\n{ls_r}\nARTIFACT head -80 report.md:\n{head_rep}\nARTIFACT jq review.json:\n{jq_out}")

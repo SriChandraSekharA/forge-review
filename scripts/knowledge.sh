@@ -4,15 +4,13 @@ set -euo pipefail
 target_dir="${1:-.forge-standard-review}"
 mkdir -p "$target_dir"
 
-# Resolve script dir for fallback references lookup
+# Resolve script dir for fallback references lookup (portable to any install location)
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 repo_ref_knowledge=""
 if [ -f "references/knowledge.md" ]; then
   repo_ref_knowledge="references/knowledge.md"
 elif [ -f "$script_dir/../references/knowledge.md" ]; then
   repo_ref_knowledge="$script_dir/../references/knowledge.md"
-elif [ -f "~/projects/forge-standard-review/references/knowledge.md" ]; then
-  repo_ref_knowledge="~/projects/forge-standard-review/references/knowledge.md"
 fi
 
 repo_ref_checklist=""
@@ -20,8 +18,6 @@ if [ -f "references/checklist.md" ]; then
   repo_ref_checklist="references/checklist.md"
 elif [ -f "$script_dir/../references/checklist.md" ]; then
   repo_ref_checklist="$script_dir/../references/checklist.md"
-elif [ -f "~/projects/forge-standard-review/references/checklist.md" ]; then
-  repo_ref_checklist="~/projects/forge-standard-review/references/checklist.md"
 fi
 
 # Fallback priority: AGENTS.md -> CONTRIBUTING.md -> .github/copilot-instructions.md -> docs/agents/issue-tracker.md -> Fowler baseline

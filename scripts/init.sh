@@ -7,15 +7,13 @@ mkdir -p "$target_dir"
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 
-# Resolve template/reference paths
+# Resolve template/reference paths (script-relative, portable to any install location)
 resolve_ref() {
   local rel="$1"
   if [ -f "$rel" ]; then
     echo "$rel"
   elif [ -f "$script_dir/../$rel" ]; then
     echo "$script_dir/../$rel"
-  elif [ -f "~/projects/forge-standard-review/$rel" ]; then
-    echo "~/projects/forge-standard-review/$rel"
   else
     echo ""
   fi
@@ -89,6 +87,23 @@ if [ ! -f "$target_dir/learning.md" ]; then
   touch "$target_dir/learning.md"
 fi
 
+# feedback.jsonl append-only JSONL memory (learn.sh writes, review.sh consumes):
+# create empty only if missing, never overwrite or truncate
+if [ ! -f "$target_dir/feedback.jsonl" ]; then
+  touch "$target_dir/feedback.jsonl"
+fi
+
+# rules.md: plain-English team rules enforced on every review (learn.sh --rule writes,
+# review.sh consumes): create with header template only if missing - never overwrite
+if [ ! -f "$target_dir/rules.md" ]; then
+  cat > "$target_dir/rules.md" <<'EOF'
+# Team review rules - plain-English rules enforced on every review
+# One rule per line as "- <rule text>". Lines starting with '#' and blank lines are ignored.
+# Example (uncomment to activate):
+# - No console.log in shipped code; use the structured logger.
+EOF
+fi
+
 # call ./scripts/knowledge.sh "$target_dir" and ./scripts/history.sh "$target_dir" if they exist
 if [ -f "$script_dir/knowledge.sh" ]; then
   bash "$script_dir/knowledge.sh" "$target_dir" 2>/dev/null || true
@@ -105,7 +120,7 @@ fi
 # handle stale .pid (impeccable pattern): check both .pid and .pid.live, unlink if kill -0 fails
 for pid_file in "$target_dir/.pid" "$target_dir/.pid.live"; do
   if [ -f "$pid_file" ]; then
-    pid_val="$(cat "$pid_file" 2>/dev/null | tr -d ' \n\r' || echo "")"
+    pid_val="$(tr -d ' \n\r' < "$pid_file" 2>/dev/null || echo "")"
     if [ -z "$pid_val" ]; then
       rm -f "$pid_file"
     elif ! kill -0 "$pid_val" 2>/dev/null; then

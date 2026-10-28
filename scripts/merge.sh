@@ -6,11 +6,11 @@ target_dir="${1:-.forge-standard-review}"
 mkdir -p "$target_dir"
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
+# Resolve reference paths (script-relative, portable to any install location)
 resolve_ref() {
   local rel="$1"
   if [ -f "$rel" ]; then echo "$rel"
   elif [ -f "$script_dir/../$rel" ]; then echo "$script_dir/../$rel"
-  elif [ -f "~/projects/forge-standard-review/$rel" ]; then echo "~/projects/forge-standard-review/$rel"
   else echo ""; fi
 }
 
@@ -75,5 +75,51 @@ fi
 # learning.md: never truncated - append only, create if missing
 if [ ! -f "$target_dir/learning.md" ]; then
   touch "$target_dir/learning.md"
+fi
+
+# feedback.jsonl: append-only JSONL memory - never truncate. When merging an existing
+# instance, optional $2 (file or dir holding feedback.jsonl) supplies foreign/new JSON
+# lines: append only lines not already present, exact-line dedupe via grep -Fxq,
+# preserving existing order (learning.md append-only semantics).
+if [ ! -f "$target_dir/feedback.jsonl" ]; then
+  touch "$target_dir/feedback.jsonl"
+fi
+if [ "$#" -ge 2 ] && [ -n "$2" ]; then
+  foreign_fb="$2"
+  if [ -d "$foreign_fb" ]; then
+    foreign_fb="$foreign_fb/feedback.jsonl"
+  fi
+  if [ -f "$foreign_fb" ]; then
+    while IFS= read -r fb_line || [ -n "$fb_line" ]; do
+      if [ -n "$fb_line" ] && ! grep -Fxq -- "$fb_line" "$target_dir/feedback.jsonl" 2>/dev/null; then
+        printf '%s\n' "$fb_line" >> "$target_dir/feedback.jsonl"
+      fi
+    done < "$foreign_fb"
+  fi
+fi
+
+# rules.md: plain-English team rules - never lose user rules. Create with header template
+# if missing; optional $2 (file or dir holding rules.md) supplies foreign rules: union of
+# lines, exact-line dedupe via grep -Fxq, preserving existing order.
+if [ ! -f "$target_dir/rules.md" ]; then
+  cat > "$target_dir/rules.md" <<'EOF'
+# Team review rules - plain-English rules enforced on every review
+# One rule per line as "- <rule text>". Lines starting with '#' and blank lines are ignored.
+# Example (uncomment to activate):
+# - No console.log in shipped code; use the structured logger.
+EOF
+fi
+if [ "$#" -ge 2 ] && [ -n "$2" ]; then
+  foreign_rules="$2"
+  if [ -d "$foreign_rules" ]; then
+    foreign_rules="$foreign_rules/rules.md"
+  fi
+  if [ -f "$foreign_rules" ]; then
+    while IFS= read -r rule_line || [ -n "$rule_line" ]; do
+      if [ -n "$rule_line" ] && ! grep -Fxq -- "$rule_line" "$target_dir/rules.md" 2>/dev/null; then
+        printf '%s\n' "$rule_line" >> "$target_dir/rules.md"
+      fi
+    done < "$foreign_rules"
+  fi
 fi
 echo "merge done"

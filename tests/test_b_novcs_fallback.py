@@ -1,13 +1,13 @@
 """Scenario B — Edge: no VCS (hg/none) + missing docs fallback to Fowler.
 Real FS, real git rev-parse branch, no mocks.
-# test: scenario B no-vcs fallback - no git repo -> history.md no-vcs, still creates .forge-standard/ with checklist/knowledge/state
+# test: scenario B no-vcs fallback - no git repo -> history.md no-vcs, still creates .forge-standard-review/ with checklist/knowledge/state
 """
 import subprocess
 import pathlib
 import shutil
 import os
 
-REPO_ROOT = pathlib.Path("~/projects/forge-standard")
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 INIT_SH = REPO_ROOT / "scripts" / "init.sh"
 
 
@@ -38,9 +38,9 @@ def test_b_novcs_fallback(tmp_path):
     assert r.returncode == 0, f"init failed on no-vcs: {r.stderr} {r.stdout}"
     assert "init done" in r.stdout
 
-    anvil = tmp / ".forge-standard"
+    anvil = tmp / ".forge-standard-review"
     assert anvil.exists(), "anvil dir not created"
-    ls = run("ls -R .forge-standard", cwd=tmp).stdout
+    ls = run("ls -R .forge-standard-review", cwd=tmp).stdout
     print(f"ls -R: {ls}")
     # history.md contains no-vcs without exit 1
     hist = (anvil / "history.md").read_text() if (anvil / "history.md").exists() else ""
@@ -67,7 +67,7 @@ def test_b_novcs_fallback(tmp_path):
     # Verify no crash artifacts
     state = (anvil / "state.json").read_text() if (anvil / "state.json").exists() else ""
     print(f"state.json: {state[:500]}")
-    wc = run("wc -l .forge-standard/history.md", cwd=tmp).stdout.strip()
+    wc = run("wc -l .forge-standard-review/history.md", cwd=tmp).stdout.strip()
     print(f"wc -l history.md: {wc}")
 
     # Second variant: no docs at all -> must fallback to Fowler
@@ -79,8 +79,8 @@ def test_b_novcs_fallback(tmp_path):
     if r2.returncode != 0:
         r2 = run("bash ./scripts/init.sh", cwd=tmp2)
     assert r2.returncode == 0
-    know2 = (tmp2 / ".forge-standard" / "knowledge.md").read_text()
+    know2 = (tmp2 / ".forge-standard-review" / "knowledge.md").read_text()
     assert "Fowler" in know2 and "Long Method" in know2, f"Fowler fallback failed: {know2[:500]}"
-    hist2 = (tmp2 / ".forge-standard" / "history.md").read_text()
+    hist2 = (tmp2 / ".forge-standard-review" / "history.md").read_text()
     assert "no-vcs" in hist2
     print(f"Fowler fallback OK: {know2[:300]}")

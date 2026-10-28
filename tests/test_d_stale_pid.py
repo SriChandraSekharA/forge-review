@@ -10,7 +10,7 @@ import time
 import os
 import signal
 
-REPO_ROOT = pathlib.Path("~/projects/forge-standard")
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 INIT_SH = REPO_ROOT / "scripts" / "init.sh"
 
 
@@ -30,23 +30,23 @@ def test_d_stale_pid_cleanup(tmp_path):
     run("git add .", cwd=tmp)
     run("git commit -m init", cwd=tmp)
 
-    # first init to create .forge-standard
+    # first init to create .forge-standard-review
     r0 = run(f"bash {INIT_SH}", cwd=tmp)
     if r0.returncode != 0:
         r0 = run("bash ./scripts/init.sh", cwd=tmp)
     assert r0.returncode == 0
-    anvil = tmp / ".forge-standard"
+    anvil = tmp / ".forge-standard-review"
     assert (anvil / "state.json").exists()
     state_before = (anvil / "state.json").read_text()
     json.loads(state_before)  # must be valid json
 
-    # Setup: echo 999999 > .forge-standard/.pid (stale)
+    # Setup: echo 999999 > .forge-standard-review/.pid (stale)
     (anvil / ".pid").write_text("999999\n")
     assert (anvil / ".pid").read_text().strip() == "999999"
     # Verify 999999 is stale (kill -0 should fail)
     r_kill = run("kill -0 999999 2>&1; echo RC:$?")
     print(f"kill -0 999999: {r_kill.stdout}")
-    # also create live pid: sleep 10 & echo $! > .forge-standard/.pid.live
+    # also create live pid: sleep 10 & echo $! > .forge-standard-review/.pid.live
     sleeper = subprocess.Popen(["sleep", "10"])
     live_pid = str(sleeper.pid)
     (anvil / ".pid.live").write_text(live_pid + "\n")
@@ -83,7 +83,7 @@ def test_d_stale_pid_cleanup(tmp_path):
     assert data.get("initialized") is True
     assert "version" in data
     # also ensure valid via jq
-    r_jq = run("jq empty .forge-standard/state.json && echo jq_ok", cwd=tmp)
+    r_jq = run("jq empty .forge-standard-review/state.json && echo jq_ok", cwd=tmp)
     assert "jq_ok" in r_jq.stdout, f"state.json invalid json: {r_jq.stdout} {r_jq.stderr}"
 
     # Additional: stale .pid.live also cleaned if stale
@@ -106,9 +106,9 @@ def test_d_stale_pid_cleanup(tmp_path):
             pass
 
     # Artifact
-    ls = run("ls -R .forge-standard", cwd=tmp).stdout
+    ls = run("ls -R .forge-standard-review", cwd=tmp).stdout
     cat_state = (anvil / "state.json").read_text()
-    print(f"\nARTIFACT ls -R:\n{ls}\nARTIFACT cat state.json:\n{cat_state}\nARTIFACT .pid head:\n{run('ls -l .forge-standard/.pid* 2>&1; cat .forge-standard/.pid 2>&1; cat .forge-standard/.pid.live 2>&1', cwd=tmp).stdout}")
+    print(f"\nARTIFACT ls -R:\n{ls}\nARTIFACT cat state.json:\n{cat_state}\nARTIFACT .pid head:\n{run('ls -l .forge-standard-review/.pid* 2>&1; cat .forge-standard-review/.pid 2>&1; cat .forge-standard-review/.pid.live 2>&1', cwd=tmp).stdout}")
 
     # Final: concurrent re-init — run two init.sh concurrently (impeccable pattern)
     p1 = subprocess.Popen(["bash", str(INIT_SH)], cwd=tmp)

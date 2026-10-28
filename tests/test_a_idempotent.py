@@ -7,7 +7,7 @@ import subprocess
 import pathlib
 import shutil
 
-REPO_ROOT = pathlib.Path("~/projects/forge-standard")
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 INIT_SH = REPO_ROOT / "scripts" / "init.sh"
 
 
@@ -36,12 +36,12 @@ def test_a_idempotent_preserve(tmp_path):
     if "init done" not in r1.stdout:
         r1b = run("bash ./scripts/init.sh", cwd=tmp)
         assert r1b.returncode == 0, r1b.stderr
-    anvil = tmp / ".forge-standard"
+    anvil = tmp / ".forge-standard-review"
     assert (anvil / "checklist.md").exists(), "checklist.md missing after 1st init"
     assert (anvil / "state.json").exists()
     assert (anvil / "history.md").exists()
     # ls -R artifact
-    ls1 = run("ls -R .forge-standard", cwd=tmp).stdout
+    ls1 = run("ls -R .forge-standard-review", cwd=tmp).stdout
     assert "checklist.md" in ls1
     # cat state.json artifact
     state1 = json.loads((anvil / "state.json").read_text())
@@ -83,7 +83,7 @@ def test_a_idempotent_preserve(tmp_path):
     assert hist2_lines - header_lines == git_count, f"history wc {hist2_lines} header {header_lines} != git log {git_count} text:{hist2_text[:300]!r}"
 
     # Artifacts
-    ls2 = run("ls -R .forge-standard", cwd=tmp).stdout
+    ls2 = run("ls -R .forge-standard-review", cwd=tmp).stdout
     cat_state = (anvil / "state.json").read_text()
-    wc_hist = run("wc -l .forge-standard/history.md", cwd=tmp).stdout.strip()
+    wc_hist = run("wc -l .forge-standard-review/history.md", cwd=tmp).stdout.strip()
     print(f"\nARTIFACT ls -R:\n{ls2}\nARTIFACT cat state.json:\n{cat_state}\nARTIFACT wc -l history.md:\n{wc_hist}\nARTIFACT head checklist:\n{checklist[:800]}")
