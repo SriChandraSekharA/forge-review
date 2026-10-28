@@ -19,6 +19,8 @@ if [ -n "$input_arg" ] && [ -f "$input_arg" ]; then
 elif [ -f "$out_dir/learning.md" ] && [ -s "$out_dir/learning.md" ]; then
   src="$out_dir/learning.md"
 else
+  # SC2012: run-*.log filenames are epoch-pid generated (safe chars); ls -t is the simplest mtime sort
+  # shellcheck disable=SC2012
   latest=$(ls -t "$out_dir"/run-*.log 2>/dev/null | head -1 || true)
   if [ -n "$latest" ] && [ -f "$latest" ]; then src="$latest"
   else src="$out_dir/learning.md"; fi
@@ -34,8 +36,8 @@ else
   BASE_SHA="HEAD"
   HEAD_SHA="HEAD"
 fi
-tmp_findings=$(mktemp); tmp_sorted=$(mktemp); tmp_json=$(mktemp)
-trap 'rm -f "$tmp_findings" "$tmp_sorted" "$tmp_json"' EXIT
+tmp_findings=$(mktemp); tmp_sorted=$(mktemp); tmp_json=$(mktemp); tmp_impact=$(mktemp); tmp_impact_sorted=$(mktemp); tmp_changed=$(mktemp)
+trap 'rm -f "$tmp_findings" "$tmp_sorted" "$tmp_json" "$tmp_impact" "$tmp_impact_sorted" "$tmp_changed"' EXIT
 if echo "$src" | grep -qE "\.json$" 2>/dev/null && [ -f "$src" ]; then
   if command -v jq >/dev/null 2>&1 && jq -e '.findings' "$src" >/dev/null 2>&1; then
     jq -r '.findings[] | "L: \(.file):\(.line) [\(.severity)] \(.reason) -> \(.fix)"' "$src" > "$tmp_findings" 2>/dev/null || true
@@ -59,6 +61,32 @@ done < "$tmp_findings"
 sort -n "$tmp_sorted" -o "$tmp_sorted" 2>/dev/null || true
 extract_file() { echo "$1" | grep -oE "L:[[:space:]]*[^[:space:]]+" | sed 's/^L:[[:space:]]*//' | head -1 || echo "diff:1"; }
 extract_line() { f=$(extract_file "$1"); echo "$f" | grep -oE ":[0-9]+" | tr -d ':' | tail -1 || echo "1"; }
+# feat: blast-radius impact tracing beyond the diff (Greptile-inspired) - derive changed files from findings, run impact.sh
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+impact_sh="$script_dir/impact.sh"
+if [ -s "$tmp_sorted" ]; then
+  cut -d'|' -f2- "$tmp_sorted" | while IFS= read -r ranked || [ -n "$ranked" ]; do
+    imp_f="$(extract_file "$ranked")"
+    imp_line="$(extract_line "$ranked")"
+    imp_f="$(printf '%s' "$imp_f" | sed -E 's/:[0-9]+$//')"
+    imp_f="$(printf '%s' "$imp_f" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    if [ -z "$imp_f" ]; then continue; fi
+    if [ "$imp_f" = "diff" ]; then continue; fi
+    if [ "$imp_line" = "0" ]; then continue; fi
+    printf '%s\n' "$imp_f"
+  done | sort -u > "$tmp_changed" || true
+fi
+if [ -s "$tmp_changed" ] && [ -f "$impact_sh" ] && [ -s "$impact_sh" ]; then
+  impact_csv="$(paste -sd, "$tmp_changed" 2>/dev/null || tr '\n' ',' < "$tmp_changed" | sed 's/,$//')"
+  if [ -n "$impact_csv" ]; then
+    bash "$impact_sh" --files "$impact_csv" > "$tmp_impact" 2>/dev/null || : > "$tmp_impact"
+  fi
+fi
+: > "$tmp_impact_sorted"
+if [ -s "$tmp_impact" ]; then
+  grep -E '^IMPACT .* <- ' "$tmp_impact" 2>/dev/null | sort -u > "$tmp_impact_sorted" || true
+fi
+impact_more="$(grep -E '^\.\.\. [0-9]+ more$' "$tmp_impact" 2>/dev/null | head -1 || true)"
 {
   echo "# Anvil Review Report"
   echo ""
@@ -66,6 +94,13 @@ extract_line() { f=$(extract_file "$1"); echo "$f" | grep -oE ":[0-9]+" | tr -d 
   echo ""
   echo "Generated: $ts_report"
   echo ""
+  if [ -s "$tmp_impact_sorted" ]; then
+    echo "## Impact (beyond the diff)"
+    echo ""
+    cat "$tmp_impact_sorted"
+    if [ -n "$impact_more" ]; then printf '%s\n' "$impact_more"; fi
+    echo ""
+  fi
   if [ ! -s "$tmp_sorted" ]; then
     echo "No findings"
     echo ""
@@ -141,10 +176,26 @@ if [ -s "$tmp_sorted" ]; then
     printf '  {"file":"%s","line":"%s","severity":"%s","reason":"%s","fix":"%s","prompt":"%s"}' "$f_esc" "$line" "$sev" "$r_esc" "$fix_esc" "$p_esc" >> "$tmp_json"
   done < "$tmp_sorted"
 fi
-echo "" >> "$tmp_json"
-echo ']}' >> "$tmp_json"
+{ echo ""; echo ']'; printf ',"impact":['; } >> "$tmp_json"
+impact_first=1
+if [ -s "$tmp_impact_sorted" ]; then
+  esc_imp() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr -d '\n' | sed 's/\t/ /g'; }
+  while read -r imp_tag imp_changed imp_arrow imp_src imp_kind || [ -n "${imp_tag:-}" ]; do
+    if [ "$imp_tag" != "IMPACT" ]; then continue; fi
+    if [ "$imp_arrow" != "<-" ]; then continue; fi
+    if [ -z "$imp_changed" ] || [ -z "$imp_src" ] || [ -z "$imp_kind" ]; then continue; fi
+    case "$imp_kind" in import|require|include|reference) ;; *) continue ;; esac
+    if [ "$impact_first" -eq 1 ]; then impact_first=0; else printf ',' >> "$tmp_json"; fi
+    ic="$(esc_imp "$imp_changed")"; ii="$(esc_imp "$imp_src")"; ik="$(esc_imp "$imp_kind")"
+    printf '["%s","%s","%s"]' "$ic" "$ii" "$ik" >> "$tmp_json"
+  done < "$tmp_impact_sorted"
+fi
+printf ']' >> "$tmp_json"
+echo '}' >> "$tmp_json"
 if command -v jq >/dev/null 2>&1; then
-  jq empty "$tmp_json" 2>/dev/null && cat "$tmp_json" > "$review_json" || cat "$tmp_json" > "$review_json"
+  # non-fatal validation attempt (historical behavior: copy regardless; SC2015-safe)
+  jq empty "$tmp_json" 2>/dev/null || true
+  cat "$tmp_json" > "$review_json"
   jq . "$review_json" >/dev/null 2>&1 || true
 else cat "$tmp_json" > "$review_json"; fi
 echo "report: $report_md"
