@@ -6,8 +6,19 @@ set -euo pipefail
 # Env: TESTS_PRESENT=1 enables the test-quality axis (axis 6).
 #
 # This script is deliberately the ONLY place that knows how to find things.
-# Phase 2 adds real linters (ruff / eslint / gitleaks / semgrep) beside these
-# rules; the regex rules stay as the offline fallback.
+# Real linters run first when they are installed (ruff, eslint, gitleaks, and
+# semgrep behind an explicit opt-in); the regex rules below are the offline
+# fallback for whatever no linter covered. A missing tool never blocks a review.
+#
+# Ruleset selection: `.forge-standard-review/knowledge.md` (written by
+# knowledge.sh from the repo own standards doc) may carry directives such as
+#   ruff-select: E,F,B,S
+#   eslint-config: configs/eslint.review.cjs
+# They are used instead of the defaults, so the review follows repo policy
+# rather than a hardcoded rule list.
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+normalizer="$script_dir/lint-normalize.py"
 
 # --- Hunk-aware line mapping ---
 # Flatten a unified diff into "<file>\t<line>\t<text>" records for ADDED lines only,
@@ -50,6 +61,183 @@ flatten_diff() {
   ' "$1"
 }
 
+# --- Real linters -----------------------------------------------------------
+# Selection is per language, so a missing tool degrades that language to the
+# regex fallback instead of failing the run:
+#   ruff      -> Python        (offline once installed)
+#   eslint    -> JS/TS         (offline; honours eslint-config directive)
+#   gitleaks  -> secrets, all  (offline once installed)
+#   semgrep   -> all           (OPT-IN: FORGE_SEMGREP=1, --config auto fetches rules)
+#
+# COVERED_LANGS records only languages a linter actually ran for: if ruff is
+# absent, Python is not covered and the regex rules keep working. The regexes
+# additionally yield to a linter only where that linter detects the same class
+# of problem (see the YIELD argument of scan_flat).
+
+knowledge_doc=".forge-standard-review/knowledge.md"
+
+# Read a directive value out of the knowledge doc, falling back to $2.
+knowledge_directive() {
+  local key="$1" fallback="$2" value=""
+  if [ -f "$knowledge_doc" ]; then
+    value=$(grep -iE "^[[:space:]]*${key}[[:space:]]*:" "$knowledge_doc" 2>/dev/null \
+      | head -1 | sed -E 's/^[^:]*:[[:space:]]*//' | tr -d '\r' || true)
+  fi
+  [ -n "$value" ] || value="$fallback"
+  printf '%s' "$value"
+}
+
+record_detectors() {
+  if [ -n "${FORGE_DETECT_LOG:-}" ]; then
+    printf 'detectors: %s\n' "${DETECTORS:-none}" >> "$FORGE_DETECT_LOG" 2>/dev/null || true
+  fi
+}
+
+# emit_tool_findings <tool> <json>
+emit_tool_findings() {
+  local tool="$1" json="$2"
+  [ -s "$json" ] || return 0
+  [ -f "$normalizer" ] || return 0
+  command -v python3 >/dev/null 2>&1 || return 0
+  python3 "$normalizer" "$tool" "$json" "$flat_records" >> "$findings_out" 2>/dev/null || true
+}
+
+# A linter that ran and reported (exit 0 or 1) owns its language; exit 2+ is a
+# tool error and must not silently disable the regex fallback.
+linter_ran() {
+  local rc="$1"
+  [ "$rc" -le 1 ]
+}
+
+# Normalize an extension list into the space-padded form (" py js ") used by the
+# coverage/yield comparisons, so " py" and "py js" both compare correctly.
+pad_exts() {
+  local padded
+  padded="$(printf '%s' "${1:-}" | tr -s ' ')"
+  case "$padded" in
+    " "*) ;;
+    *) padded=" $padded" ;;
+  esac
+  case "$padded" in
+    *" ") ;;
+    *) padded="$padded " ;;
+  esac
+  printf '%s' "$padded"
+}
+
+run_linters() {
+  local flat="$1"
+  flat_records="$flat"
+  COVERED_LANGS=" "
+  RUFF_BANDIT=0
+  DETECTORS=""
+
+  local changed
+  changed=$(cut -f1 "$flat" 2>/dev/null | sort -u || true)
+  if [ -z "$changed" ]; then
+    DETECTORS="none"
+    record_detectors
+    return 0
+  fi
+
+  local py_files js_files
+  py_files=$(printf '%s\n' "$changed" | grep -E '\.py$' || true)
+  js_files=$(printf '%s\n' "$changed" | grep -E '\.(js|jsx|mjs|cjs|ts|tsx)$' || true)
+
+  local tmp rc select
+  tmp=$(mktemp)
+
+  # --- Python ---
+  if [ -n "$py_files" ] && command -v ruff >/dev/null 2>&1; then
+    select=$(knowledge_directive 'ruff-select' 'E9,F,B,S')
+    rc=0
+    # shellcheck disable=SC2086
+    ruff check --select "$select" --output-format=json --no-cache --quiet $py_files > "$tmp" 2>/dev/null || rc=$?
+    if linter_ran "$rc"; then
+      emit_tool_findings ruff "$tmp"
+      COVERED_LANGS="${COVERED_LANGS}py "
+      DETECTORS="${DETECTORS}ruff "
+      # Bandit families (S) are what cover the string-built query and swallowed
+      # exception classes; without them ruff says nothing about those, so the
+      # regex rules must not stand down.
+      case ",${select}," in
+        *,S,*|*,S[0-9]*) RUFF_BANDIT=1 ;;
+        *) RUFF_BANDIT=0 ;;
+      esac
+    fi
+  fi
+
+  # --- JS/TS ---
+  local eslint_bin=""
+  if [ -x node_modules/.bin/eslint ]; then
+    eslint_bin="node_modules/.bin/eslint"
+  elif command -v eslint >/dev/null 2>&1; then
+    eslint_bin="eslint"
+  fi
+  if [ -n "$js_files" ] && [ -n "$eslint_bin" ]; then
+    local eslint_config
+    eslint_config=$(knowledge_directive 'eslint-config' '')
+    rc=0
+    # shellcheck disable=SC2086
+    if [ -n "$eslint_config" ]; then
+      "$eslint_bin" --config "$eslint_config" --format json --no-error-on-unmatched-pattern $js_files > "$tmp" 2>/dev/null || rc=$?
+    else
+      "$eslint_bin" --format json --no-error-on-unmatched-pattern $js_files > "$tmp" 2>/dev/null || rc=$?
+    fi
+    if linter_ran "$rc"; then
+      emit_tool_findings eslint "$tmp"
+      COVERED_LANGS="${COVERED_LANGS}js ts "
+      DETECTORS="${DETECTORS}eslint "
+    fi
+  fi
+
+  # --- Secrets, every language ---
+  if command -v gitleaks >/dev/null 2>&1; then
+    rc=0
+    gitleaks detect --no-git --source . --no-banner --exit-code 0 \
+      --report-format json --report-path "$tmp" >/dev/null 2>&1 || rc=$?
+    if linter_ran "$rc"; then
+      emit_tool_findings gitleaks "$tmp"
+      DETECTORS="${DETECTORS}gitleaks "
+    fi
+  fi
+
+  # --- Opt-in only: --config auto fetches rules from the network ---
+  if [ "${FORGE_SEMGREP:-0}" = "1" ] && command -v semgrep >/dev/null 2>&1; then
+    rc=0
+    # shellcheck disable=SC2086
+    semgrep scan --config auto --json --quiet $changed > "$tmp" 2>/dev/null || rc=$?
+    if linter_ran "$rc"; then
+      emit_tool_findings semgrep "$tmp"
+      COVERED_LANGS="${COVERED_LANGS}py js ts "
+      DETECTORS="${DETECTORS}semgrep "
+    fi
+  fi
+
+  rm -f "$tmp"
+  if [ -z "$DETECTORS" ]; then
+    DETECTORS="none"
+  else
+    DETECTORS="${DETECTORS% }"
+  fi
+  record_detectors
+  return 0
+}
+
+# True when a linter already ran for this path's language.
+lang_covered() {
+  local path="$1" ext
+  ext="${path##*.}"
+  case "$ext" in
+    tsx) ext="ts" ;;
+    jsx|mjs|cjs) ext="js" ;;
+  esac
+  case "$COVERED_LANGS" in
+    *" $ext "*) return 0 ;;
+  esac
+  return 1
+}
+
 # Helper: worker heuristic scan (local, no API).
 # Every finding carries the REAL file:line of the added line that triggered it.
 run_worker() {
@@ -63,16 +251,31 @@ run_worker() {
   flat=$(mktemp)
   flatten_diff "$diff_in" > "$flat" 2>/dev/null || : > "$flat"
 
-  # scan_flat <regex> <axis/severity> <reason> <fix> - one finding per matching added line (max 20)
+  # Real linters first (each one only where it is installed and relevant).
+  run_linters "$flat"
+
+  # scan_flat <regex> <axis/severity> <reason> <fix> [yield-langs]
   # The pattern travels through the environment (ENVIRON) so awk never strips
   # backslashes from it: `-v` assignments process escape sequences and turn an
   # escaped plus into an invalid quantifier on BSD awk.
+  # "yield-langs" is a space-padded extension list (" py "). Files of such a
+  # language are left to the real linter when it demonstrably detects the same
+  # problem class and actually ran; when it is absent, this rule still applies.
   scan_flat() {
-    local pat="$1" axis_sev="$2" reason="$3" fix="$4"
-    SCAN_PAT="$pat" awk -F'\t' -v as="$axis_sev" -v rsn="$reason" -v fx="$fix" '
+    local pat="$1" axis_sev="$2" reason="$3" fix="$4" yield_langs
+    yield_langs="$(pad_exts "${5:-}")"
+    SCAN_PAT="$pat" YIELD_LANGS="$yield_langs" awk -F'\t' -v as="$axis_sev" -v rsn="$reason" -v fx="$fix" -v cv="${COVERED_LANGS:- }" '
+      function ext_of(p,  e) {
+        e = p
+        sub(/.*\./, "", e)
+        if (e == "tsx") return "ts"
+        if (e == "jsx" || e == "mjs" || e == "cjs") return "js"
+        return e
+      }
       BEGIN { c = 0; pat = tolower(ENVIRON["SCAN_PAT"]) }
       # never report the detector own rule table: skip scan_flat / SCAN_PAT lines
       $3 ~ /scan_flat|SCAN_PAT/ { next }
+      index(ENVIRON["YIELD_LANGS"], " " ext_of($1) " ") > 0 && index(cv, " " ext_of($1) " ") > 0 { next }
       tolower($3) ~ pat {
         printf "L: %s:%s [%s] %s -> fix hint: %s\n", $1, $2, as, rsn, fx
         c++
@@ -85,10 +288,12 @@ run_worker() {
   scan_flat 'todo|fixme|hack' 'readability/medium' 'TODO/FIXME left - remove or ticket' 'resolve TODO'
   # 2) debug logging left in place
   scan_flat 'console\.log|console\.debug' 'readability/low' 'console.log leftover - use structured logger' 'remove console.log'
-  # 3) string-built SQL
-  scan_flat 'sql injection|select.*\+|query\(.*\+|sql = "' 'security/critical' 'possible SQL injection (CWE-89)' 'use parameterized query'
+  # 3) string-built SQL - yields to ruff only when its bandit families are selected
+  local py_bandit=""
+  [ "${RUFF_BANDIT:-0}" = "1" ] && py_bandit=" py"
+  scan_flat 'sql injection|select.*\+|query\(.*\+|sql = "' 'security/critical' 'possible SQL injection (CWE-89)' 'use parameterized query' "$py_bandit"
   # 4) swallowed exceptions
-  scan_flat 'catch[[:space:]]*\([^)]*\)[[:space:]]*\{[[:space:]]*\}|except:[[:space:]]*pass' 'correctness/high' 'empty catch swallows error' 'handle typed error or rethrow'
+  scan_flat 'catch[[:space:]]*\([^)]*\)[[:space:]]*\{[[:space:]]*\}|except:[[:space:]]*pass' 'correctness/high' 'empty catch swallows error' 'handle typed error or rethrow' "$py_bandit"
 
   # Coordinates for set-level (not per-line) heuristics: first changed file + its line
   local first_file first_line added_lines

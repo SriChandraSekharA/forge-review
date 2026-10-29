@@ -36,6 +36,16 @@ git clone https://github.com/SriChandraSekharA/forge-standard-review.git
 - **Severity-cap score** - the score is a pure function of the findings, never of the loop counter: any critical caps it at 3, high at 5, medium at 7; only low/nitpick can reach 8-10. Scores can only change when findings change.
 - **Hunk-aware findings** - every finding carries the real `path:line` from the diff hunk header (`src/foo.py:87`), not an offset into the diff text.
 - **Convergence stop** - the loop halts as soon as the finding set stops changing instead of counting up to a cap (`--max-iterations` / `--max-fixes` still bound it).
+- **Real linters first** - ruff (Python), eslint (JS/TS) and gitleaks (secrets) run when installed, and only
+  violations on lines this diff added are kept. semgrep is opt-in (`FORGE_SEMGREP=1`) because `--config auto`
+  fetches rules. Regex rules remain the offline fallback and stand down only where a linter demonstrably covers
+  the same problem - so a machine with no linters installed still gets a review.
+- **Optional real fixes** - `--fix` lets ruff/eslint apply the mechanical part between iterations and re-reads
+  the diff, so the next iteration reviews the fixed code. Nothing is rewritten unless you ask for it.
+- **Repo-selected rulesets** - `.forge-standard-review/knowledge.md` may carry `ruff-select:` / `eslint-config:`
+  directives, so the review follows the repo's own standards rather than a hardcoded rule list.
+- **Detector log** - each run records `detectors: ruff eslint` (or `none`) in its run log, so you can tell which
+  engine actually judged the diff.
 - **Learning memory** - `learn.sh` records dismissed finding classes and severity floors in append-only `.forge-standard-review/feedback.jsonl`; `review.sh` applies them automatically and prints `learning: N suppressed (M below floor)`. Never destroys data.
 - **Custom team rules** - plain-English standards live in `.forge-standard-review/rules.md` (one `- <rule>` per line, `#` comments ignored), injected into every iteration and reported as `rules: N active`; violations surface in citation format tagged `rule violation:`. Merge-preserved with exact-line dedupe.
 - **Blast radius** - `impact.sh` traces local importers/callers beyond the diff; `report.md` gains an `## Impact (beyond the diff)` section (before the ranked sections) and `review.json` an additive `impact` array.

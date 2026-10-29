@@ -27,6 +27,7 @@ mode="auto"
 range_val=""
 file_path=""
 preview=0
+fix_mode=0
 MAX_ITERATIONS=8
 MAX_FIXES=4
 tests_cmd=""
@@ -54,6 +55,11 @@ while [ $# -gt 0 ]; do
       preview=1
       shift
       ;;
+    --fix)
+      # Opt-in: let real linters apply the mechanical fixes between iterations.
+      fix_mode=1
+      shift
+      ;;
     --max-iterations)
       if [ $# -lt 2 ]; then echo "error: --max-iterations requires N" >&2; exit 2; fi
       case "$2" in
@@ -76,7 +82,7 @@ while [ $# -gt 0 ]; do
       shift 2
       ;;
     --help|-h)
-      echo "Usage: $0 [--staged|--range BASE..HEAD|--file path] [--preview] [--max-iterations N] [--max-fixes N] [--tests CMD]"
+      echo "Usage: $0 [--staged|--range BASE..HEAD|--file path] [--preview] [--fix] [--max-iterations N] [--max-fixes N] [--tests CMD]"
       exit 0
       ;;
     *)
@@ -337,7 +343,9 @@ if [ ! -f "$detect_script" ]; then
   exit 2
 fi
 run_worker() {
-  TESTS_PRESENT="${TESTS_PRESENT:-0}" bash "$detect_script" "$1" "$2"
+  TESTS_PRESENT="${TESTS_PRESENT:-0}" \
+  FORGE_DETECT_LOG="${FORGE_DETECT_LOG:-${run_log:-}}" \
+    bash "$detect_script" "$1" "$2"
 }
 
 # --- Feedback memory (Greptile-inspired learned feedback) ---
@@ -590,6 +598,21 @@ while [ "$i" -le "$MAX_ITERATIONS" ]; do
     rm -f "$findings_tmp" "$critic_out"
     break
   else
+    # Opt-in real fixes: let ruff/eslint rewrite what they can, then re-read the
+    # diff so the next iteration judges the FIXED code. A fix that changed nothing
+    # keeps the convergence signal meaningful (prev_sig is only reset on change).
+    if [ "$fix_mode" -eq 1 ] && [ "$fixes_used" -lt "$MAX_FIXES" ] && [ -f "$script_dir/autofix.sh" ]; then
+      fix_out=$(bash "$script_dir/autofix.sh" "$diff_file" 2>/dev/null || echo "autofix: nothing to fix")
+      echo "$fix_out" | tee -a "$run_log"
+      case "$fix_out" in
+        "autofix: applied"*)
+          get_diff "$diff_file"
+          prev_sig=""
+          cur_sig=""
+          fixes_used=$((fixes_used + 1))
+          ;;
+      esac
+    fi
     if [ "$fixes_used" -lt "$MAX_FIXES" ]; then
       hint_accum="${hints_line#hints:}"
       hint_accum="${hint_accum#"${hint_accum%%[![:space:]]*}"}"

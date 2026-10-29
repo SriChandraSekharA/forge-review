@@ -14,6 +14,31 @@
 
 Walk the chain in order 1 to 5. For each path, if the file exists at that location, copy its content to `$target_dir/knowledge.md` and stop. If none exist, write this file plus the Fowler baseline to `$target_dir/knowledge.md`. Cache result under `.forge-standard-review/knowledge.md` for reuse on next run. The target dir defaults to `.forge-standard-review` and can be passed as `$1`.
 
+## Ruleset Directives (how the chain selects linters)
+
+The resolved `knowledge.md` is not just prose for a human: detection reads a small,
+explicit directive block from it, so the review follows the repo's own policy
+instead of a hardcoded rule list. Directives are plain `key: value` lines, one per
+line, case-insensitive:
+
+```
+ruff-select: E9,F,B,S
+eslint-config: configs/eslint.review.cjs
+```
+
+| Directive | Used by | Default when absent |
+|---|---|---|
+| `ruff-select` | `detect.sh`, `autofix.sh` | `E9,F,B,S` |
+| `eslint-config` | `detect.sh`, `autofix.sh` | the repo's own ESLint config discovery |
+
+Consequences worth knowing:
+
+- Dropping `S` from `ruff-select` means ruff no longer covers the security rules, so the
+  regex rules for string-built SQL and swallowed exceptions stay active for Python.
+  Coverage is therefore never assumed: it is derived from what actually ran.
+- `eslint-config` pointing at a review-only config lets a team tighten rules for reviews
+  without changing what developers run day to day.
+
 ## How scripts/knowledge.sh Picks First Existing
 
 ```sh

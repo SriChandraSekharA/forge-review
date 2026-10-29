@@ -21,6 +21,10 @@ Core principles:
 - **Quota-free** - no API keys, no usage caps, no network gate.
 - **Severity-cap score** - pure function of findings: critical caps 3, high 5, medium 7; only low/nitpick reach 8-10.
 - **Hunk-aware findings** - real `path:line` resolved from diff hunk headers.
+- **Real linters first** - ruff (Python), eslint (JS/TS) and gitleaks run when installed and keep only
+  violations on lines this diff added; semgrep is opt-in (`FORGE_SEMGREP=1`). Regex rules are the offline
+  fallback and stand down only where a linter demonstrably covers the same problem. `--fix` applies the
+  mechanical part; the rest stays with the reviewer.
 - **Convergence stop** - loop halts when the finding set stops changing (iteration cap still configurable).
 - **Ranked report** - findings ordered critical -> high -> medium -> low -> nitpick.
 - **Learning memory** - dismissed findings, severity floors, and plain-English team rules persist per-repo and apply automatically on every run.
@@ -136,7 +140,11 @@ Options:
 
 - `--max-iterations N` - hard cap on loop iterations (default 8); the loop normally stops earlier, as soon as the
   finding set converges or the score reaches the gate.
-- `--max-fixes N` - cap hint re-injections across the loop (default 4); when reached, the loop keeps iterating without injecting new hints.
+- `--max-fixes N` - cap hint re-injections (and fix attempts when `--fix` is on) across the loop (default 4);
+  when reached, the loop keeps iterating without injecting new hints.
+- `--fix` - opt-in. Between iterations, run `ruff check --fix` / `eslint --fix` on the changed files and
+  recompute the diff, so the next iteration reviews the FIXED code. A fix that changes nothing does not
+  consume a budget slot, and everything a linter cannot fix (design, tests, architecture) stays manual.
 - `--tests CMD` - run CMD (via `bash -c`) once per iteration after critic scoring; a non-zero exit injects one synthetic `[test/high]` finding plus the output tail so the loop reacts to test failures (no retries).
 
 On every run the loop applies learned memory automatically: matching dismissals are suppressed, findings below the learned severity floor are dropped, and the run prints `learning: N suppressed (M below floor)` plus `rules: N active`.
@@ -188,7 +196,9 @@ forge-standard-review/
   scripts/
     init.sh               # idempotent .forge-standard-review/ bootstrap
     review.sh             # staged | range | file review loop (orchestrator)
-    detect.sh             # detection engine: hunk-aware flattening + local rules
+    detect.sh             # detection engine: hunk-aware flattening, linters, local rules
+    lint-normalize.py     # maps ruff/eslint/gitleaks/semgrep JSON onto findings
+    autofix.sh            # --fix: apply the mechanical part via ruff/eslint
     critic.sh             # severity-cap score (pure function of findings)
     report.sh             # ranked report generator
     learn.sh              # feedback memory CLI (dismissals, severity floors, team rules)
