@@ -1,0 +1,9 @@
+diff --git a/tests/fixtures/sqli/sample/db.py b/tests/fixtures/sqli/sample/db.py
+new file mode 100644
+--- /dev/null
++++ b/tests/fixtures/sqli/sample/db.py
+@@ -0,0 +1,4 @@
++import sqlite3
++
++def find(conn, ident):
++    q = "SELECT * FROM users WHERE id = " + ident

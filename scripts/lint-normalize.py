@@ -17,6 +17,7 @@ Any malformed report is treated as "no findings" - a broken linter must never
 fail a review.
 """
 import json
+import os
 import sys
 
 # ruff rule code -> (axis/severity, reason, fix)
@@ -45,7 +46,26 @@ SEMGREP_SEVERITY = {
 
 
 def normalise(path):
-    return str(path or "").lstrip("./")
+    """Repo-relative form of a path a tool reported.
+
+    ruff and eslint report ABSOLUTE filenames while gitleaks and semgrep report
+    relative ones, so a raw string compare against the diff silently drops every
+    real-ruff finding (the stub tests never caught it because the stubs echoed the
+    path back verbatim). Absolute paths are made relative to the working directory
+    the tool ran in, and any remaining "./" prefix is stripped.
+    """
+    text = str(path or "")
+    if not text:
+        return ""
+    if os.path.isabs(text):
+        try:
+            text = os.path.relpath(text, os.getcwd())
+        except ValueError:
+            pass
+    text = text.replace("\\", "/")
+    while text.startswith("./"):
+        text = text[2:]
+    return text
 
 
 def load_added(flat_path):
@@ -67,7 +87,7 @@ def make_emitter(added):
         key = (normalise(path), str(line))
         if key not in added:
             return
-        print(f"L: {normalise(path)}:{line} [{axis_sev}] {reason} -> fix hint: {fix}")
+        print(f"L: {key[0]}:{line} [{axis_sev}] {reason} -> fix hint: {fix}")
 
     return emit
 
@@ -75,6 +95,10 @@ def make_emitter(added):
 def ruff(report, emit):
     for item in report or []:
         code = str(item.get("code") or "").strip()
+        # E902/E999 are I/O and syntax-parse failures, not style opinions about the
+        # change: a file the tool could not read says nothing about its quality.
+        if code in ("E902", "E999", "E995"):
+            continue
         row = (item.get("location") or {}).get("row", 0)
         if code in RUFF_CODES:
             axis_sev, reason, fix = RUFF_CODES[code]

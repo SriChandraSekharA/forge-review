@@ -1,0 +1,9 @@
+diff --git a/tests/fixtures/todo/sample/task.py b/tests/fixtures/todo/sample/task.py
+new file mode 100644
+--- /dev/null
++++ b/tests/fixtures/todo/sample/task.py
+@@ -0,0 +1,4 @@
++def run():
++    # TODO: handle the retry path
++    return None
++

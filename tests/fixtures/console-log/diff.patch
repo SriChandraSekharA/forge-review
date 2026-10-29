@@ -1,0 +1,8 @@
+diff --git a/tests/fixtures/console-log/sample/view.js b/tests/fixtures/console-log/sample/view.js
+new file mode 100644
+--- /dev/null
++++ b/tests/fixtures/console-log/sample/view.js
+@@ -0,0 +1,3 @@
++function render(items) {
++  console.log(items);
++}

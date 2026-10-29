@@ -1,0 +1,8 @@
+diff --git a/tests/fixtures/clean/sample/total.py b/tests/fixtures/clean/sample/total.py
+new file mode 100644
+--- /dev/null
++++ b/tests/fixtures/clean/sample/total.py
+@@ -0,0 +1,3 @@
++def total(values):
++    return sum(values)
++

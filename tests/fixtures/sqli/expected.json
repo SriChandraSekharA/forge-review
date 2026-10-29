@@ -1,0 +1,13 @@
+{
+  "case": "sqli",
+  "why": "one critical finding caps the run at 3, so a review can never call this a pass",
+  "score": 3,
+  "findings": [
+    {
+      "file": "tests/fixtures/sqli/sample/db.py",
+      "line": 4,
+      "severity": "critical",
+      "contains": "parameterized"
+    }
+  ]
+}

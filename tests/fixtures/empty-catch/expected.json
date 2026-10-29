@@ -1,0 +1,13 @@
+{
+  "case": "empty-catch",
+  "why": "a swallowed exception is high severity, so the gate stays closed at 5",
+  "score": 5,
+  "findings": [
+    {
+      "file": "tests/fixtures/empty-catch/sample/loader.py",
+      "line": 4,
+      "severity": "high",
+      "contains": "rethrow"
+    }
+  ]
+}

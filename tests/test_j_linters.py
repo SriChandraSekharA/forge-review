@@ -55,6 +55,11 @@ def make_patch(tmp, path, lines):
         f"+++ b/{path}\n"
         f"@@ -0,0 +1,{len(lines)} @@\n" + body
     )
+    # Materialise the file too: detect.sh only lets a linter claim a language when
+    # the path exists in the tree (a patch is not an applied working copy).
+    target = tmp / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("".join(f"{line}\n" for line in lines))
     return patch
 
 
@@ -209,3 +214,22 @@ def test_j_autofix_applies_a_real_fix_only_when_asked(tmp_path):
     assert r2.returncode == 0, f"{r2.stderr} {r2.stdout}"
     log2 = sorted((plain / ".forge-standard-review").glob("run-*.log"))[-1].read_text()
     assert "autofix:" not in log2, f"fixer ran without --fix:\n{log2}"
+
+
+def test_j_absolute_tool_paths_still_match(tmp_path):
+    # (g) real ruff and eslint report absolute filenames. Comparing those to the
+    #     diff's repo-relative paths drops every finding while still claiming the
+    #     language is covered, which silently disables the regex fallback too.
+    tmp = tmp_path / "abs"
+    tmp.mkdir()
+    make_scripts(tmp)
+    patch = make_patch(tmp, "pkg/app.py", [sql_line(), "x = 1"])
+    body = (
+        "echo \"[{\\\"code\\\":\\\"S608\\\",\\\"filename\\\":\\\"$PWD/pkg/app.py\\\",\"\n"
+        "      \"\\\"location\\\":{\\\"row\\\":1},\\\"message\\\":\\\"hardcoded\\\"}]\"\n"
+    )
+    bindir = stub(tmp, "ruff", body)
+    findings = detect(tmp, patch, bindir=bindir)
+    assert "pkg/app.py:1 [security/critical]" in findings, findings
+    assert tmp.as_posix() not in findings, f"absolute path leaked into the report:\n{findings}"
+

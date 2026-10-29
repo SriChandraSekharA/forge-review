@@ -1,0 +1,13 @@
+{
+  "case": "todo",
+  "why": "an unresolved marker is medium severity, which still blocks the gate at 7",
+  "score": 7,
+  "findings": [
+    {
+      "file": "tests/fixtures/todo/sample/task.py",
+      "line": 2,
+      "severity": "medium",
+      "contains": "remove or ticket"
+    }
+  ]
+}

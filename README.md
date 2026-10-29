@@ -44,6 +44,8 @@ git clone https://github.com/SriChandraSekharA/forge-standard-review.git
   the diff, so the next iteration reviews the fixed code. Nothing is rewritten unless you ask for it.
 - **Repo-selected rulesets** - `.forge-standard-review/knowledge.md` may carry `ruff-select:` / `eslint-config:`
   directives, so the review follows the repo's own standards rather than a hardcoded rule list.
+- **Golden diffs** - `review.sh --diff-file patch` reviews a patch that is already on disk without applying it, so the
+  same diff always earns the same verdict; `tests/fixtures/*/` pairs each known patch with the score it must get.
 - **Detector log** - each run records `detectors: ruff eslint` (or `none`) in its run log, so you can tell which
   engine actually judged the diff.
 - **Learning memory** - `learn.sh` records dismissed finding classes and severity floors in append-only `.forge-standard-review/feedback.jsonl`; `review.sh` applies them automatically and prints `learning: N suppressed (M below floor)`. Never destroys data.

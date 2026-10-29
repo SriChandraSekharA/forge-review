@@ -1,0 +1,13 @@
+{
+  "case": "console-log",
+  "why": "one low finding costs a single point, so the run passes at 9 but still reports it",
+  "score": 9,
+  "findings": [
+    {
+      "file": "tests/fixtures/console-log/sample/view.js",
+      "line": 2,
+      "severity": "low",
+      "contains": "structured logger"
+    }
+  ]
+}

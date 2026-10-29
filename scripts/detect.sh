@@ -125,6 +125,16 @@ pad_exts() {
   printf '%s' "$padded"
 }
 
+# Keep only paths that exist in this working tree (see run_linters for why).
+filter_existing() {
+  local f
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    if [ -f "$f" ]; then printf '%s\n' "$f"; fi
+  done
+  return 0
+}
+
 run_linters() {
   local flat="$1"
   flat_records="$flat"
@@ -143,6 +153,13 @@ run_linters() {
   local py_files js_files
   py_files=$(printf '%s\n' "$changed" | grep -E '\.py$' || true)
   js_files=$(printf '%s\n' "$changed" | grep -E '\.(js|jsx|mjs|cjs|ts|tsx)$' || true)
+
+  # A linter can only judge a file that exists in this working tree. In --diff-file
+  # mode the patch is never applied, so the file is usually absent; running a tool
+  # on a missing path reports an I/O error, and claiming coverage from that would
+  # silence the regex fallback for a file no tool ever read.
+  py_files=$(printf '%s\n' "$py_files" | filter_existing || true)
+  js_files=$(printf '%s\n' "$js_files" | filter_existing || true)
 
   local tmp rc select
   tmp=$(mktemp)

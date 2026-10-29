@@ -135,6 +135,9 @@ Modes:
 - `--staged` - review only staged changes (`git diff --cached`).
 - `--range <ref>` - review a commit range or branch diff.
 - `--file <path>` - review a single file regardless of VCS state.
+- `--diff-file <patch>` - review a unified diff that already exists on disk (no working tree needed, nothing
+  is applied or fixed). Used by the golden fixtures; linters only run on paths that exist, so a patch-only
+  review falls back to the regex rules and says so in the run log.
 
 Options:
 

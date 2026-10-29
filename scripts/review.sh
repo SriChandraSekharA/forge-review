@@ -10,6 +10,7 @@ set -euo pipefail
 #   ./scripts/review.sh --staged [--preview]
 #   ./scripts/review.sh --range BASE..HEAD [--preview]
 #   ./scripts/review.sh --file path/to/file [--preview]
+#   ./scripts/review.sh --diff-file path/to/patch [--preview]
 #   ./scripts/review.sh [--preview]  (defaults to BASE_SHA...HEAD_SHA diff)
 # Options:
 #   --max-iterations N   max loop iterations (default 8)
@@ -26,6 +27,7 @@ script_dir="$(cd "$(dirname "$0")" && pwd)"
 mode="auto"
 range_val=""
 file_path=""
+patch_file=""
 preview=0
 fix_mode=0
 MAX_ITERATIONS=8
@@ -49,6 +51,18 @@ while [ $# -gt 0 ]; do
       mode="file"
       if [ $# -lt 2 ]; then echo "error: --file requires path" >&2; exit 2; fi
       file_path="$2"
+      shift 2
+      ;;
+    --diff-file)
+      # Review a patch that is already on disk. Used by the golden fixtures and by
+      # CI, so the engine can be tested on a known diff without mutating a tree.
+      mode="diff-file"
+      if [ $# -lt 2 ]; then echo "error: --diff-file requires a patch path" >&2; exit 2; fi
+      patch_file="$2"
+      if [ ! -f "$patch_file" ] || [ ! -r "$patch_file" ]; then
+        echo "error: --diff-file not readable: $patch_file" >&2
+        exit 2
+      fi
       shift 2
       ;;
     --preview)
@@ -82,7 +96,7 @@ while [ $# -gt 0 ]; do
       shift 2
       ;;
     --help|-h)
-      echo "Usage: $0 [--staged|--range BASE..HEAD|--file path] [--preview] [--fix] [--max-iterations N] [--max-fixes N] [--tests CMD]"
+      echo "Usage: $0 [--staged|--range BASE..HEAD|--file path|--diff-file patch] [--preview] [--fix] [--max-iterations N] [--max-fixes N] [--tests CMD]"
       exit 0
       ;;
     *)
@@ -126,6 +140,10 @@ get_diff() {
       else
         : > "$out"
       fi
+      ;;
+    diff-file)
+      # Already a patch: copy verbatim so hunk coordinates stay exactly as authored.
+      cat "$patch_file" > "$out" 2>/dev/null || : > "$out"
       ;;
     range)
       if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
@@ -601,7 +619,7 @@ while [ "$i" -le "$MAX_ITERATIONS" ]; do
     # Opt-in real fixes: let ruff/eslint rewrite what they can, then re-read the
     # diff so the next iteration judges the FIXED code. A fix that changed nothing
     # keeps the convergence signal meaningful (prev_sig is only reset on change).
-    if [ "$fix_mode" -eq 1 ] && [ "$fixes_used" -lt "$MAX_FIXES" ] && [ -f "$script_dir/autofix.sh" ]; then
+    if [ "$fix_mode" -eq 1 ] && [ "$fixes_used" -lt "$MAX_FIXES" ] && [ -f "$script_dir/autofix.sh" ] && [ "$mode" != "diff-file" ]; then
       fix_out=$(bash "$script_dir/autofix.sh" "$diff_file" 2>/dev/null || echo "autofix: nothing to fix")
       echo "$fix_out" | tee -a "$run_log"
       case "$fix_out" in

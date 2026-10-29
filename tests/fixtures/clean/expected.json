@@ -1,0 +1,6 @@
+{
+  "case": "clean",
+  "why": "no findings at all scores 10 and passes on the first iteration",
+  "score": 10,
+  "findings": []
+}
