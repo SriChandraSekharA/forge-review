@@ -76,7 +76,7 @@ mcp/dist/ linguist-vendored
 
 ## How to apply
 ```bash
-cd "~/projects/forge-standard-review"
+cd "/path/to/forge-standard-review"
 # create each file as above
 git add .github/dependabot.yml SUPPORT.md CITATION.cff .github/CODEOWNERS .github/ISSUE_TEMPLATE/config.yml .editorconfig .gitattributes docs/REPO_HYGIENE_GUIDE.md
 git commit -m "chore: add repo hygiene dependabot+SUPPORT+CITATION+CODEOWNERS"

@@ -51,6 +51,12 @@ else
   fi
 fi
 : > "$tmp_sorted"
+# learning.md is append-only, so an unchanged finding appears once per iteration.
+# Identical lines describe the same finding: report it once, not once per pass.
+if [ -s "$tmp_findings" ]; then
+  awk '!seen[$0]++' "$tmp_findings" > "$tmp_findings.dedup" 2>/dev/null \
+    && mv "$tmp_findings.dedup" "$tmp_findings"
+fi
 while IFS= read -r line || [ -n "$line" ]; do
   [ -z "$line" ] && continue
   sev=$(echo "$line" | grep -oiE "\[[^]]*/[[:space:]]*(critical|high|medium|low|nitpick)" | grep -oiE "critical|high|medium|low|nitpick" | head -1 | tr '[:upper:]' '[:lower:]' || true)
@@ -88,7 +94,7 @@ if [ -s "$tmp_impact" ]; then
 fi
 impact_more="$(grep -E '^\.\.\. [0-9]+ more$' "$tmp_impact" 2>/dev/null | head -1 || true)"
 {
-  echo "# Anvil Review Report"
+  echo "# Forge Standard Review Report"
   echo ""
   echo "Report generated $ts_report IST - $BASE_SHA...$HEAD_SHA"
   echo ""

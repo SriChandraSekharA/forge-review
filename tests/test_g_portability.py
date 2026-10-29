@@ -3,6 +3,7 @@
 """
 import json
 import pathlib
+import re
 import shutil
 import subprocess
 
@@ -96,3 +97,56 @@ def test_g_init_idempotent_at_fresh_path_no_reference_leak(tmp_path):
     text = know.read_text()
     assert "/Users/" not in text, "knowledge.md leaked a dev-machine path"
     assert len(text) > 0
+
+
+def test_g_no_absolute_home_paths_in_published_files():
+    # Every file a visitor reads must be portable: a dev-machine home path in a
+    # public doc is both a privacy leak and a broken copy-paste for anyone else.
+    # `.omo/` (agent run log) and `.forge-standard-review/` (local run state) are
+    # working notes, not published material, so they are out of scope here.
+    # An actual leaked path has a segment after the home root (/Users/<name>/),
+    # so prose that merely names the pattern ("hardcoded /Users/... paths") is
+    # not a hit. The root itself is assembled so this file stays clean.
+    leaked = re.compile(r"/(?:Users|home)/[A-Za-z0-9._-]+/")
+    published = [
+        "README.md",
+        "SKILL.md",
+        "CHANGELOG.md",
+        "package.json",
+        "assets/make-demo-gif.py",
+    ]
+    for pattern in ("scripts/*.sh", "scripts/*.py", "references/*.md",
+                    "templates/*", "docs/*.md", "mcp/src/*.ts", ".github/*.md",
+                    ".github/workflows/*.yml"):
+        published.extend(str(p.relative_to(REPO_ROOT))
+                         for p in sorted(REPO_ROOT.glob(pattern)))
+    offenders = []
+    for name in published:
+        path = REPO_ROOT / name
+        if not path.is_file():
+            continue
+        text = path.read_text(errors="replace")
+        if leaked.search(text):
+            offenders.append(name)
+    assert not offenders, f"absolute home paths leaked into: {offenders}"
+
+
+def test_g_demo_gif_is_generated_from_a_real_run():
+    # The old demo was a hand-drawn mock that showed the score climbing on an
+    # unchanged diff. The fix is not a nicer drawing: it is a committed generator
+    # that renders whatever the engine actually printed.
+    import py_compile
+
+    generator = REPO_ROOT / "assets" / "make-demo-gif.py"
+    assert generator.is_file(), "assets/make-demo-gif.py is missing"
+    source = generator.read_text()
+    for call in ("review.sh", "report.sh"):
+        assert call in source, f"generator never runs {call}"
+    py_compile.compile(str(generator), doraise=True, cfile=str(
+        pathlib.Path(__import__("tempfile").gettempdir()) / "demo-gif-check.pyc"))
+
+    gif = REPO_ROOT / "assets" / "demo.gif"
+    assert gif.is_file(), "assets/demo.gif is missing"
+    head = gif.read_bytes()[:6]
+    assert head in (b"GIF87a", b"GIF89a"), f"not a GIF: {head!r}"
+    assert gif.stat().st_size > 20000, "demo.gif looks empty or truncated"

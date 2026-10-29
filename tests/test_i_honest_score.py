@@ -138,3 +138,58 @@ def test_i_clean_diff_passes_and_converges(tmp_path):
     log = run_log_text(dirty)
     assert "converged: findings unchanged" in log, log
     assert "=== Iteration 3 ===" not in log, f"loop did not stop at convergence:\n{log}"
+
+
+def detect_on_patch(tmp, patch_text):
+    """Run the real detector on a handcrafted patch and return its findings."""
+    make_repo(tmp)
+    for script in sorted(SCRIPTS.glob("*.py")):
+        shutil.copy2(script, tmp / "scripts" / script.name)
+    patch = tmp / "sample.patch"
+    patch.write_text(patch_text)
+    out = tmp / "findings.txt"
+    r = run(f'TESTS_PRESENT=1 bash scripts/detect.sh "{patch}" "{out}"', cwd=tmp)
+    assert r.returncode == 0, f"detect failed: {r.stderr}"
+    return out.read_text() if out.exists() else ""
+
+
+def test_i_touched_test_file_is_not_a_deletion(tmp_path):
+    # (e) a modified test file plus a deleted binary must NOT be reported as
+    # "test deletion": the two markers live in different diff blocks, and
+    # accusing someone of deleting tests to fake green is a serious false claim.
+    tmp = tmp_path / "notdeleted"
+    tmp.mkdir()
+    patch = (
+        "diff --git a/assets/junk.bin b/assets/junk.bin\n"
+        "deleted file mode 100644\n"
+        "index 1111111..0000000\n"
+        "Binary files a/assets/junk.bin and /dev/null differ\n"
+        "diff --git a/tests/test_x.py b/tests/test_x.py\n"
+        "--- a/tests/test_x.py\n"
+        "+++ b/tests/test_x.py\n"
+        "@@ -1,2 +1,3 @@\n"
+        " import os\n"
+        "+import sys\n"
+        " print(1)\n"
+    )
+    findings = detect_on_patch(tmp, patch)
+    assert "test deletion" not in findings, findings
+
+
+def test_i_real_test_deletion_is_reported(tmp_path):
+    # (f) a genuinely deleted test file must still be reported
+    tmp = tmp_path / "deleted"
+    tmp.mkdir()
+    patch = (
+        "diff --git a/tests/test_gone.py b/tests/test_gone.py\n"
+        "deleted file mode 100644\n"
+        "index 1111111..0000000\n"
+        "--- a/tests/test_gone.py\n"
+        "+++ /dev/null\n"
+        "@@ -1,2 +0,0 @@\n"
+        "-def test_a():\n"
+        "-    assert True\n"
+    )
+    findings = detect_on_patch(tmp, patch)
+    assert "tests/test_gone.py:0" in findings, findings
+    assert "test deletion detected" in findings, findings

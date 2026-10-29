@@ -1,10 +1,10 @@
 # SEO Checklist — forge-standard-review (Task 8.6 Promotion)
 
 Generated: 2026-09-05T09:00:00+05:30 IST (2026-09-05T03:30:00Z)
-Workdir quoted: `"~/projects/forge-standard-review"`
+Workdir quoted: `"/path/to/forge-standard-review"`
 Canonical: `SriChandraSekharA/forge-standard-review` HEAD `c9724d576d57a70154be9b3c184918675f9ff605` tag `v1.1.0`
 Skills.sh canonical (lowercase): `https://www.skills.sh/srichandrasekhara/forge-standard-review` (og:title `srichandrasekhara/forge-standard-review — Agent skills`)
-README: 242 lines | docs/MCP.md: 147 lines | mcp/README.md: 115 lines | .omo/audit-v1.1.1.md: 406 lines | package.json keywords: 19 | assets/badge.svg: 798 B | assets/demo.gif: 69712 B (~68K)
+README: 242 lines | docs/MCP.md: 147 lines | mcp/README.md: 115 lines | .omo/audit-v1.1.1.md: 406 lines | package.json keywords: 19 | assets/badge.svg: 798 B | assets/demo.gif: rendered by `assets/make-demo-gif.py` (~135 KB)
 
 > No push, no `SKILL.md:6` edit in this task — read-only verification + checklist doc.
 
@@ -71,7 +71,7 @@ git clone https://github.com/SriChandraSekharA/forge-standard-review.git        
 ## 3. package.json Keywords & Skills Field
 
 ```json
-// ~/projects/forge-standard-review/package.json
+// /path/to/forge-standard-review/package.json
 {
   "name": "forge-standard-review",
   "keywords": ["code-review","pr-review","pull-request-review","code-review-checklist","security-review","vulnerability-review","owasp-review","architecture-review","code-quality-review","review-loop","iterative-review","multi-reviewer","git-diff-review","standards-review","spec-review","solid-review","quota-free-review","owasp","code-quality"],
@@ -86,9 +86,9 @@ git clone https://github.com/SriChandraSekharA/forge-standard-review.git        
 ### Leak guard
 
 ```bash
-grep -i anvil ~/projects/forge-standard-review/package.json; echo leak:$?
+grep -i anvil /path/to/forge-standard-review/package.json; echo leak:$?
 # => leak:1 (0 hits) ✅
-grep -i qodo ~/projects/forge-standard-review/package.json; echo leak:$?
+grep -i qodo /path/to/forge-standard-review/package.json; echo leak:$?
 # => leak:1 (0 hits) ✅
 ```
 
@@ -111,7 +111,7 @@ description: "Quota-free iterative code review with continuous loop, architectur
 
 ## 5. docs/MCP.md Freshness — 147 lines ✅
 
-- Path: `"~/projects/forge-standard-review/docs/MCP.md"` — `wc -l` => **147** ✅ (matches audit-v1.1.1.md evidence).
+- Path: `"/path/to/forge-standard-review/docs/MCP.md"` — `wc -l` => **147** ✅ (matches audit-v1.1.1.md evidence).
 - Covers: `mcp/mcp.json` manifest (stdio, `forge_review`), `mcp/src/server.ts`, `dist/server.js`, `mcp/package.json` SDK `^1.30.0`, `examples/mcp-client.js` + `stdio-smoke.sh` + `claude-config.json`, install/build/inspector steps, tool table synced to `mcp/mcp.json` + `SKILL.md:202-228` + `README.md:229-236` + `mcp/src/server.ts:FORGE_REVIEW_TOOL`.
 - Freshness check: `grep -q "forge_review" docs/MCP.md && grep -q "stdio" docs/MCP.md && echo "fresh"` ✅ — already verified in audit Proof section.
 
@@ -119,32 +119,29 @@ description: "Quota-free iterative code review with continuous loop, architectur
 
 ## 6. mcp/README.md — 115 lines
 
-- Path: `"~/projects/forge-standard-review/mcp/README.md"` — 115 lines, layout `mcp/package.json`, `tsconfig.json`, `mcp.json`, `src/server.ts`, `dist/server.js` ✅
+- Path: `"/path/to/forge-standard-review/mcp/README.md"` — 115 lines, layout `mcp/package.json`, `tsconfig.json`, `mcp.json`, `src/server.ts`, `dist/server.js` ✅
 - Transport `stdio`, tool `forge_review` with `mode|range|file|preview|workdir`, quoted `workdir` via `path.resolve` + `existsSync` + `spawn cwd` — no shell interpolation (see `docs/MCP.md:77` + `mcp/README.md:101`).
 - Build: `npm --prefix mcp install && npm run build --prefix mcp && npx tsc --noEmit -p mcp/tsconfig.json` — `mcp/dist/server.js` 7722 B built ✅
 
 ---
 
-## 7. Demo GIF — `assets/demo.gif` 68K Placeholder Note
+## 7. Demo GIF - `assets/demo.gif` (rendered from a real run)
 
-- File: `"~/projects/forge-standard-review/assets/demo.gif"` — **69712 B (~68 KB)** ✅ (`du -h` 72K due to block size, `wc -c` 69712 exact), `ls -la` 68K.
-- Content: 800x400, 7 frames, ~10s, loop 0 — terminal simulation via **Python PIL** (no ffmpeg/convert on host) covering `init.sh -> review.sh --staged -> report.md -> review.json | jq` contract.
-- README `README.md:7` disclaimer + `README.md:59` note:
-
-  > "Placeholder terminal simulation via PIL (no ffmpeg/convert on this host); re-record with `script` + `ttygif` for pixel-perfect capture."
-
-  > "Note: This GIF is a generated placeholder via Python PIL (ffmpeg/convert not available on this host). For a real capture: `script -q /tmp/demo.txt` then `ttygif`/`terminalizer` or `ffmpeg -loop 0 -f lavfi -i color=c=black:s=800x400 -t 10` overlay. The file at `assets/demo.gif` satisfies the `10s loop init -> review -> report` contract."
-
-- SEO note: placeholder satisfies `README.md:48` `![Demo](assets/demo.gif)` contract for skills.sh/GH preview; replace with **pixel-perfect `script` + `ttygif` capture** when re-recording host has `ffmpeg`/`ttygif`/`terminalizer` — keep 10s loop, 800x400, `init -> staged -> report.md -> review.json | jq` sequence intact.
-- Companion: `assets/npx-proof.txt` 28 lines, 1546 B — raw `npx --yes skills add /path -l` log with ANSI banner (see README:62-83).
+- File: `assets/demo.gif` - 900x620, 10 frames, loop 0, ~135 KB.
+- Content: every frame is captured output from `scripts/review.sh --staged`
+  followed by `scripts/report.sh` on a throwaway repo, so the GIF shows the
+  score holding at 3 and the loop stopping on convergence instead of climbing.
+- Regenerate with `python3 assets/make-demo-gif.py`: it builds the temp repo,
+  runs the real engine, and rewrites the GIF with `pillow`. Nothing in it is
+  hand-drawn, so it cannot drift from the engine.
+- Companion: `assets/npx-proof.txt` - raw `npx --yes skills add <path> -l` log
+  with ANSI banner (see README).
 
 ### Verify
 
 ```bash
-ls -lh "~/projects/forge-standard-review/assets/demo.gif"
-# => 68K / 69712 B
-file "~/projects/forge-standard-review/assets/demo.gif" | head
-ls -lh "~/projects/forge-standard-review/assets/badge.svg" "~/projects/forge-standard-review/assets/npx-proof.txt"
+python3 assets/make-demo-gif.py --out /tmp/demo-check.gif
+file /tmp/demo-check.gif | head
 ```
 
 ---
@@ -175,7 +172,7 @@ curl -sL -w "\nHTTP_CODE:%{http_code}\n" "https://www.skills.sh/srichandrasekhar
 # When live: HTTP_CODE:200 with skill listing
 
 # Step 5 — poll helper
-bash "~/projects/forge-standard-review/scripts/poll-skills.sh"
+bash "/path/to/forge-standard-review/scripts/poll-skills.sh"
 # loops curl -sL until 200 or timeout
 ```
 
@@ -201,7 +198,7 @@ curl -sL "https://www.skills.sh/srichandrasekhara/forge-standard-review" | grep 
 ### Local discovery (reads `package.json` + `SKILL.md` in workdir) — always works
 
 ```bash
-npx --yes skills add ~/projects/forge-standard-review -l
+npx --yes skills add /path/to/forge-standard-review -l
 # => Local path validated
 # => Found 1 skill
 #
@@ -215,9 +212,9 @@ npx --yes skills add ~/projects/forge-standard-review -l
 Probe today:
 
 ```bash
-npx --yes skills add "~/projects/forge-standard-review" -l 2>&1 | grep -E "Found|forge-standard-review|Available"
+npx --yes skills add "/path/to/forge-standard-review" -l 2>&1 | grep -E "Found|forge-standard-review|Available"
 # => Found 1 skill / forge-standard-review ✅
-cat "~/projects/forge-standard-review/assets/npx-proof.txt"
+cat "/path/to/forge-standard-review/assets/npx-proof.txt"
 # => shows banner + Found 1 skill block
 ```
 
@@ -313,24 +310,24 @@ All tables quote `workdir` via `path.resolve` + `existsSync` + `spawn cwd`, no s
 gh api repos/SriChandraSekharA/forge-standard-review --jq .topics | wc -l; gh api repos/SriChandraSekharA/forge-standard-review --jq .topics
 
 # No anvil leak
-grep -i anvil ~/projects/forge-standard-review/package.json; echo anvil_exit:$?
-grep -i qodo  ~/projects/forge-standard-review/package.json; echo qodo_exit:$?
+grep -i anvil /path/to/forge-standard-review/package.json; echo anvil_exit:$?
+grep -i qodo  /path/to/forge-standard-review/package.json; echo qodo_exit:$?
 
 # Badges
-grep -n "img.shields.io/badge/skills.sh-forge--standard" ~/projects/forge-standard-review/README.md
-ls -lh ~/projects/forge-standard-review/assets/badge.svg ~/projects/forge-standard-review/assets/demo.gif
-cat ~/projects/forge-standard-review/assets/badge.svg | head -5
+grep -n "img.shields.io/badge/skills.sh-forge--standard" /path/to/forge-standard-review/README.md
+ls -lh /path/to/forge-standard-review/assets/badge.svg /path/to/forge-standard-review/assets/demo.gif
+cat /path/to/forge-standard-review/assets/badge.svg | head -5
 
 # Lines
-wc -l ~/projects/forge-standard-review/README.md ~/projects/forge-standard-review/docs/MCP.md ~/projects/forge-standard-review/mcp/README.md
+wc -l /path/to/forge-standard-review/README.md /path/to/forge-standard-review/docs/MCP.md /path/to/forge-standard-review/mcp/README.md
 # => 242 147 115
 
 # Frontmatter
-head -6 ~/projects/forge-standard-review/SKILL.md | cat -A
+head -6 /path/to/forge-standard-review/SKILL.md | cat -A
 
 # npx local proof
-npx --yes skills add "~/projects/forge-standard-review" -l 2>&1 | grep -E "Found|forge-standard-review"
-cat ~/projects/forge-standard-review/assets/npx-proof.txt | grep -A2 "Found"
+npx --yes skills add "/path/to/forge-standard-review" -l 2>&1 | grep -E "Found|forge-standard-review"
+cat /path/to/forge-standard-review/assets/npx-proof.txt | grep -A2 "Found"
 
 # skills.sh poll
 curl -sL -w "\nHTTP_CODE:%{http_code}\n" "https://skills.sh/SriChandraSekharA/forge-standard-review" | tail -5
@@ -341,16 +338,16 @@ curl -sL -w "\nHTTP_CODE:%{http_code}\n" "https://www.skills.sh/srichandrasekhar
 
 ## 15. Evidence Files (workdir quoted)
 
-- README: `~/projects/forge-standard-review/README.md` (242 lines)
-- package.json: `~/projects/forge-standard-review/package.json` (keywords 19, skills 1, no anvil)
-- SKILL.md: `~/projects/forge-standard-review/SKILL.md` (246 lines, frontmatter `forge-standard-review`)
-- docs/MCP.md: `~/projects/forge-standard-review/docs/MCP.md` (147 lines)
-- mcp/README.md: `~/projects/forge-standard-review/mcp/README.md` (115 lines)
-- .omo/audit-v1.1.1.md: `~/projects/forge-standard-review/.omo/audit-v1.1.1.md` (406 lines)
-- assets/badge.svg: `~/projects/forge-standard-review/assets/badge.svg` (798 B)
-- assets/demo.gif: `~/projects/forge-standard-review/assets/demo.gif` (69712 B ~68K placeholder)
-- assets/npx-proof.txt: `~/projects/forge-standard-review/assets/npx-proof.txt` (28 lines)
-- Workdir quoted: `"~/projects/forge-standard-review"`
+- README: `/path/to/forge-standard-review/README.md` (242 lines)
+- package.json: `/path/to/forge-standard-review/package.json` (keywords 19, skills 1, no anvil)
+- SKILL.md: `/path/to/forge-standard-review/SKILL.md` (246 lines, frontmatter `forge-standard-review`)
+- docs/MCP.md: `/path/to/forge-standard-review/docs/MCP.md` (147 lines)
+- mcp/README.md: `/path/to/forge-standard-review/mcp/README.md` (115 lines)
+- .omo/audit-v1.1.1.md: `/path/to/forge-standard-review/.omo/audit-v1.1.1.md` (406 lines)
+- assets/badge.svg: `/path/to/forge-standard-review/assets/badge.svg` (798 B)
+- assets/demo.gif + assets/make-demo-gif.py: `/path/to/forge-standard-review/assets/`
+- assets/npx-proof.txt: `/path/to/forge-standard-review/assets/npx-proof.txt` (28 lines)
+- Workdir quoted: `"/path/to/forge-standard-review"`
 - Durable: `/var/folders/4l/6c2fc7hj6sn1b4sqf9j_wwkc0000gn/T/ulw-20260905-XXXXXX.md.xxFgv7WX6G` + `.omo/notepad.md`
 
 ---

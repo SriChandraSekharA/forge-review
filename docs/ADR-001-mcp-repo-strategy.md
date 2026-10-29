@@ -3,7 +3,7 @@
 Date: 2026-09-05
 Status: Accepted
 Deciders: SriChandraSekharA, forge-standard-review maintainers
-Workdir: `~/projects/forge-standard-review`
+Workdir: `/path/to/forge-standard-review`
 Related: `.omo/audit.md`, `.omo/notepad.md`, `package.json`, `SKILL.md`
 
 ## Context
@@ -96,11 +96,11 @@ This keeps the cost contained and the pairing explicit if we have to split.
 
 ## Validation
 
-* Dir exists: `"~/projects/forge-standard-review/docs"` via `mkdir -p "~/projects/forge-standard-review/docs"`.
-* File written: `"~/projects/forge-standard-review/docs/ADR-001-mcp-repo-strategy.md"` exists and passes basic checks.
+* Dir exists: `"/path/to/forge-standard-review/docs"` via `mkdir -p "/path/to/forge-standard-review/docs"`.
+* File written: `"/path/to/forge-standard-review/docs/ADR-001-mcp-repo-strategy.md"` exists and passes basic checks.
 * No push performed, this ADR is local only until review, same rule as Task 3 archive prep.
-* Approval log touched: `"~/projects/forge-standard-review/.omo/notepad.md"` appended with dated entry, see next section.
+* Approval log touched: `"/path/to/forge-standard-review/.omo/notepad.md"` appended with dated entry, see next section.
 
 ## Approval Log Entry
 
-The canonical log at `"~/projects/forge-standard-review/.omo/notepad.md"` was appended on 2026-09-05 with a short entry noting this ADR was accepted as same-repo. That entry is the durable approval record, not just this file.
+The canonical log at `"/path/to/forge-standard-review/.omo/notepad.md"` was appended on 2026-09-05 with a short entry noting this ADR was accepted as same-repo. That entry is the durable approval record, not just this file.

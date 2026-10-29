@@ -9,7 +9,7 @@ description: "Quota-free iterative code review with continuous loop, architectur
 
 Quota-free iterative code review with continuous loop - no tokens, no quotas, no external service dependency.
 
-> **Demo — 10s loop: `init.sh -> review.sh --staged -> report.md -> review.json | jq`** — see [Demo](#demo) below. Placeholder terminal simulation via PIL (no ffmpeg/convert on this host); re-record with `script` + `ttygif` for pixel-perfect capture.
+> **Demo — 10s loop: `review.sh --staged -> report.sh`** — see [Demo](#demo) below. Every frame is captured engine output; regenerate it with `python3 assets/make-demo-gif.py`.
 
 ## Install
 
@@ -78,16 +78,34 @@ Teach the reviewer once - it persists in per-repo memory and applies on every ru
 
 ![Demo](assets/demo.gif)
 
-10s loop — terminal simulation (800x400, 7 frames, ~10s, loop 0):
+Every frame above is real output from `review.sh` and `report.sh` run against a
+throwaway repo whose only commit stages one file with two defects:
 
 ```bash
-bash ./scripts/init.sh
-bash ./scripts/review.sh --staged
-cat .forge-standard-review/report.md
-cat .forge-standard-review/review.json | jq
+bash ./scripts/review.sh --staged --max-iterations 3
+bash ./scripts/report.sh
 ```
 
-> Note: This GIF is a generated placeholder via Python PIL (ffmpeg/convert not available on this host). For a real capture: `script -q /tmp/demo.txt` then `ttygif`/`terminalizer` or `ffmpeg -loop 0 -f lavfi -i color=c=black:s=800x400 -t 10` overlay. The file at `assets/demo.gif` satisfies the `10s loop init -> review -> report` contract.
+```
+Iteration 1: score: 3 (2 findings)
+Iteration 2: score: 3 (2 findings)
+converged: findings unchanged since iteration 1 - stopping
+score: 3
+```
+
+The score does not climb because nothing changed between iterations — a rerun
+re-reads the same findings and the loop stops instead of inflating the number.
+The report that follows ranks `db.py:5 | critical` above `db.py:8 | high` and
+names the real file and line.
+
+Regenerate the GIF (needs `pillow` and a POSIX shell):
+
+```bash
+python3 assets/make-demo-gif.py     # rewrites assets/demo.gif from a fresh run
+```
+
+If the engine changes, re-running that script changes the GIF: nothing in it is
+hand-drawn.
 
 ### Proof
 
@@ -120,7 +138,7 @@ Full raw log with ANSI banner in `assets/npx-proof.txt` (30 lines).
 - `scripts/` - `init.sh`, `review.sh`, `report.sh`
 - `references/` - checklist and knowledge fallback docs
 - `templates/` - report templates
-- `assets/` - `demo.gif` (10s loop), `badge.svg`, `npx-proof.txt`
+- `assets/` - `demo.gif` (rendered from a real run), `make-demo-gif.py` (regenerates it), `badge.svg`, `npx-proof.txt`
 
 ## Timestamps
 

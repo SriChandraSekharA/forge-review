@@ -333,11 +333,25 @@ run_worker() {
     if [ -n "$changed_src" ] && [ -z "$changed_test" ]; then
       echo "L: ${first_file}:${first_line} [correctness/high] missing test coverage for changed code - changed src without test update -> fix hint: add test for changed code: e.g. tests/test_foo.py covering boundary and failure cases" >> "$findings_out"
     fi
-    if grep -qE '^deleted file mode' "$diff_in" 2>/dev/null && grep -qE '^--- a/.*(test|spec)' "$diff_in" 2>/dev/null; then
-      local deleted_path
-      deleted_path=$(grep -E '^--- a/.*(test|spec)' "$diff_in" 2>/dev/null | head -1 | sed -E 's/^--- a\///' || true)
-      echo "L: ${deleted_path:-$first_file}:0 [correctness/high] test deletion detected - removing tests to fake green is forbidden -> fix hint: restore tests and fix code instead" >> "$findings_out"
-    fi
+    # A test file counts as deleted only when ONE diff block both says "deleted
+    # file mode" and names a test path. Grepping those two markers separately
+    # across the whole patch made any deleted binary plus any touched test file
+    # look like test removal - a false accusation, which is worse than a miss.
+    local deleted_tests deleted_path
+    deleted_tests=$(awk '
+      /^diff --git /       { path = ""; deleted = 0; next }
+      /^deleted file mode/  { deleted = 1; next }
+      /^--- a\//            { path = substr($0, 7); next }
+      /^\+\+\+[ \t]/        {
+        if (deleted && path ~ /(test|spec)/) printf "%s\n", path
+        deleted = 0
+        next
+      }
+    ' "$diff_in" 2>/dev/null | head -20 || true)
+    while IFS= read -r deleted_path; do
+      [ -n "$deleted_path" ] || continue
+      echo "L: ${deleted_path}:0 [correctness/high] test deletion detected - removing tests to fake green is forbidden -> fix hint: restore tests and fix code instead" >> "$findings_out"
+    done <<< "$deleted_tests"
     if grep -qiE 'mock' "$flat" 2>/dev/null; then
       if ! grep -qiE 'assert|expect|edge|boundary' "$flat" 2>/dev/null; then
         scan_flat 'mock' 'correctness/medium' 'brittle mocks without edge cases - mocks lack assertions for failure paths' 'add edge case test with realistic mock and assert failure branch'

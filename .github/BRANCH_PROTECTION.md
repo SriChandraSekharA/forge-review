@@ -1,6 +1,6 @@
 # Branch Protection — `SriChandraSekharA/forge-standard-review` `main`
 
-> Workdir: `"~/projects/forge-standard-review"` — HEAD `c9724d5` tag `v1.1.0` `cb1fa70` origin `forge-standard-review`
+> Workdir: `"/path/to/forge-standard-review"` — HEAD `c9724d5` tag `v1.1.0` `cb1fa70` origin `forge-standard-review`
 > Generated: 2026-09-05T08:55 IST (Task 8.5 Hardening & Branch Protection)
 > Scope: manual UI steps only — no `git push --force`, no `mcp/dist` direct edit, all paths quoted.
 
@@ -14,31 +14,31 @@ gh api repos/SriChandraSekharA/forge-standard-review --jq '{archived,license:.li
 # archived:false correct — canonical stays public, not archived
 # license MIT correct — gh api repos/SriChandraSekharA/forge-standard-review/license => {"name":"LICENSE","path":"LICENSE","license":{"key":"mit","spdx_id":"MIT"}}
 
-cat "~/projects/forge-standard-review/LICENSE" | head -5
+cat "/path/to/forge-standard-review/LICENSE" | head -5
 # => MIT License / Copyright (c) 2026 Chandra Sekhar — PASS (MIT 2026 Chandra Sekhar, no anvil/qodo leak in LICENSE)
 
 # No anvil/qodo leak in publishable surface (exclude .git, node_modules, mcp/dist build artifact, .omo historical, .forge-standard-review runtime)
-grep -ri "qodo" --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.omo --exclude-dir=.forge-standard-review "~/projects/forge-standard-review" 2>&1 | head
+grep -ri "qodo" --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.omo --exclude-dir=.forge-standard-review "/path/to/forge-standard-review" 2>&1 | head
 # => 0 hits (outside .omo historical + .forge-standard-review runtime — package.json keywords clean, SKILL.md frontmatter forge-standard-review only)
 
-grep -ri "qodo" --exclude-dir=.git --exclude-dir=node_modules "~/projects/forge-standard-review" 2>&1 | grep -v "^.*/.omo/" | grep -v "^.*/.forge-standard-review/" | head
+grep -ri "qodo" --exclude-dir=.git --exclude-dir=node_modules "/path/to/forge-standard-review" 2>&1 | grep -v "^.*/.omo/" | grep -v "^.*/.forge-standard-review/" | head
 # => 0 hits on publishable files (hits only in .omo/audit* historical references to legacy SriChandraSekharA/qodo-standard-review — expected, not a leak)
-# Same for anvil in package.json: grep -n anvil "~/projects/forge-standard-review/package.json" => 0
+# Same for anvil in package.json: grep -n anvil "/path/to/forge-standard-review/package.json" => 0
 
 # Scripts hardening
-for f in "~/projects/forge-standard-review/scripts/"*.sh; do head -n1 "$f"; done
+for f in "/path/to/forge-standard-review/scripts/"*.sh; do head -n1 "$f"; done
 # => all #!/usr/bin/env bash + line2 set -euo pipefail (critic.sh, history.sh, init.sh, knowledge.sh, merge.sh, poll-skills.sh, report.sh, review.sh)
-bash -n "~/projects/forge-standard-review/scripts/"*.sh; echo exit:$?
+bash -n "/path/to/forge-standard-review/scripts/"*.sh; echo exit:$?
 # => exit:0
 
 # Typecheck + tests (quoted workdir, mcp prefix)
-npx --prefix "~/projects/forge-standard-review/mcp" tsc --noEmit -p mcp/tsconfig.json; echo exit:$?
+npx --prefix "/path/to/forge-standard-review/mcp" tsc --noEmit -p mcp/tsconfig.json; echo exit:$?
 # => exit:0 (from mcp dir: npx --prefix mcp tsc --noEmit -p tsconfig.json; from root: npm run build --prefix mcp)
-npm --prefix "~/projects/forge-standard-review/mcp" test 2>&1 | tail -5
+npm --prefix "/path/to/forge-standard-review/mcp" test 2>&1 | tail -5
 # => Test Files 2 passed (2) / Tests 28 passed (28) — also npm test at root delegates to mcp (same 28)
 
 # mcp workdir quoting
-grep -n "path.resolve.*workdir\|existsSync.*workdir\|spawn.*cwd" "~/projects/forge-standard-review/mcp/src/server.ts"
+grep -n "path.resolve.*workdir\|existsSync.*workdir\|spawn.*cwd" "/path/to/forge-standard-review/mcp/src/server.ts"
 # => handleForgeReview: const workdir = typed.workdir ? path.resolve(typed.workdir) : repoRoot; if (!existsSync(workdir)) ...; spawn("bash",[scriptPath,...scriptArgs],{cwd: workdir}) — quoted, no shell interpolation
 ```
 
@@ -123,7 +123,7 @@ gh api repos/SriChandraSekharA/forge-standard-review/branches/main/protection --
 
 - No `git push --force` executed in this task — protection is read-only probe + UI doc.
 - No `mcp/dist/server.js` edited directly — source is `mcp/src/server.ts` with `path.resolve` + `existsSync` + `spawn cwd` quoted (build via `npm run build --prefix mcp`).
-- All script invocations quoted: `"~/projects/forge-standard-review/scripts/"*.sh`, `"~/projects/forge-standard-review/mcp"` etc.
+- All script invocations quoted: `"/path/to/forge-standard-review/scripts/"*.sh`, `"/path/to/forge-standard-review/mcp"` etc.
 - CI remains `permissions: contents: read` — branch protection is manual owner step, not automated.
 
 ## Next Verification
@@ -133,8 +133,8 @@ After owner applies rule via UI or admin PAT, re-run:
 ```bash
 gh api repos/SriChandraSekharA/forge-standard-review --jq '{archived,topics: (.topics|length), license: .license.spdx_id}' # archived:false topics:8 license:MIT
 gh api repos/SriChandraSekharA/forge-standard-review/branches/main/protection --jq . 2>&1 | head -40 # 200 with contexts, or 403 fallback
-bash -n "~/projects/forge-standard-review/scripts/"*.sh; echo ok
-npx --prefix "~/projects/forge-standard-review/mcp" tsc --noEmit -p mcp/tsconfig.json && echo tsc ok
+bash -n "/path/to/forge-standard-review/scripts/"*.sh; echo ok
+npx --prefix "/path/to/forge-standard-review/mcp" tsc --noEmit -p mcp/tsconfig.json && echo tsc ok
 npm test 2>&1 | grep -E "Test Files|Tests"
-grep -n "path.resolve.*workdir" "~/projects/forge-standard-review/mcp/src/server.ts"
+grep -n "path.resolve.*workdir" "/path/to/forge-standard-review/mcp/src/server.ts"
 ```

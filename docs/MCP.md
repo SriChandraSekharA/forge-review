@@ -99,7 +99,7 @@ echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | node mcp/dis
 Tool call with quoted workdir:
 
 ```bash
-echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"forge_review","arguments":{"mode":"staged","workdir":"~/projects/forge-standard-review"}}}' | node mcp/dist/server.js
+echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"forge_review","arguments":{"mode":"staged","workdir":"/path/to/forge-standard-review"}}}' | node mcp/dist/server.js
 ```
 
 ## Inspector (npx)

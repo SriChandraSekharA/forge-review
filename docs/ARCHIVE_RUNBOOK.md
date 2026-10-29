@@ -4,7 +4,7 @@
 
 ## Context (Task 8.1 snapshot 2026-09-05)
 
-Canonical workdir: `"~/projects/forge-standard-review"` — HEAD `c9724d5` tag `v1.1.0` (`cb1fa70` tag object) `origin/main` synced. Release `v1.1.0` exists at `https://github.com/SriChandraSekharA/forge-standard-review/releases/tag/v1.1.0` (verified `gh api repos/SriChandraSekharA/forge-standard-review/releases/tags/v1.1.0 --jq .tag_name` → `v1.1.0`, `2026-09-05T03:06:48Z` — user says released; confirmed `gh api repos/SriChandraSekharA/forge-standard-review/releases --jq '.[].tag_name'` → `v1.1.0`).
+Canonical workdir: `"/path/to/forge-standard-review"` — HEAD `c9724d5` tag `v1.1.0` (`cb1fa70` tag object) `origin/main` synced. Release `v1.1.0` exists at `https://github.com/SriChandraSekharA/forge-standard-review/releases/tag/v1.1.0` (verified `gh api repos/SriChandraSekharA/forge-standard-review/releases/tags/v1.1.0 --jq .tag_name` → `v1.1.0`, `2026-09-05T03:06:48Z` — user says released; confirmed `gh api repos/SriChandraSekharA/forge-standard-review/releases --jq '.[].tag_name'` → `v1.1.0`).
 
 Legacies at 2026-09-05 — OSS baseline + `ARCHIVED_NOTICE` + banner merged, archive still manual:
 
@@ -92,9 +92,9 @@ head -n 3 "/tmp/anvil-review-loop/README.md"  # -> > **Archived - moved to forge
 head -n 3 "/tmp/qodo-standard-review/README.md"
 
 # 5) canonical releases + tags (quoted workdir) — v1.1.3 now HEAD 178dea6
-git -C "~/projects/forge-standard-review" rev-parse HEAD  # 178dea6 (v1.1.3)
-git -C "~/projects/forge-standard-review" tag -l -n1      # v1.0.0 v1.1.0 v1.1.1 v1.1.2 v1.1.3
-git -C "~/projects/forge-standard-review" log --oneline -4 # 178dea6..5ededa3..ea93521..9f0507a
+git -C "/path/to/forge-standard-review" rev-parse HEAD  # 178dea6 (v1.1.3)
+git -C "/path/to/forge-standard-review" tag -l -n1      # v1.0.0 v1.1.0 v1.1.1 v1.1.2 v1.1.3
+git -C "/path/to/forge-standard-review" log --oneline -4 # 178dea6..5ededa3..ea93521..9f0507a
 gh api repos/SriChandraSekharA/forge-standard-review/releases/tags/v1.1.3 --jq .tag_name  # v1.1.3 (after UI publish)
 gh api repos/SriChandraSekharA/forge-standard-review/releases --jq '.[].tag_name' # list v1.1.3 when live
 # v1.1.2 9fd650d / v1.1.1 7a28222 / v1.1.0 cb1fa70 heads below — tag push via git push --tags (no gh release scope)
@@ -137,7 +137,7 @@ Tag `v1.1.3` already at `eb55395` → `178dea6^{}` (`git ls-remote --tags origin
 
 ## References
 
-- Canonical workdir: `"~/projects/forge-standard-review"` (`docs/`, `scripts/`, `mcp/`, `.omo/`)
+- Canonical workdir: `"/path/to/forge-standard-review"` (`docs/`, `scripts/`, `mcp/`, `.omo/`)
 - Durable notepad: `/var/folders/4l/6c2fc7hj6sn1b4sqf9j_wwkc0000gn/T/ulw-20260905-XXXXXX.md.xxFgv7WX6G` + `.omo/notepad.md` Task 8.1 section
-- This playbook file: `"~/projects/forge-standard-review/docs/ARCHIVE_RUNBOOK.md"`
+- This playbook file: `"/path/to/forge-standard-review/docs/ARCHIVE_RUNBOOK.md"`
 - Verification: `cat "docs/ARCHIVE_RUNBOOK.md"`, `grep Archive "docs/ARCHIVE_RUNBOOK.md"`, `gh api repos/... --jq .archived` for all 3
