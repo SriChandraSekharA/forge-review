@@ -241,20 +241,6 @@ run_linters() {
   return 0
 }
 
-# True when a linter already ran for this path's language.
-lang_covered() {
-  local path="$1" ext
-  ext="${path##*.}"
-  case "$ext" in
-    tsx) ext="ts" ;;
-    jsx|mjs|cjs) ext="js" ;;
-  esac
-  case "$COVERED_LANGS" in
-    *" $ext "*) return 0 ;;
-  esac
-  return 1
-}
-
 # Helper: worker heuristic scan (local, no API).
 # Every finding carries the REAL file:line of the added line that triggered it.
 run_worker() {

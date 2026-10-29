@@ -175,7 +175,12 @@ def test_j_autofix_applies_a_real_fix_only_when_asked(tmp_path):
     fixer = (
         "fix=0\n"
         "for a in \"$@\"; do [ \"$a\" = '--fix' ] && fix=1; done\n"
-        "if [ \"$fix\" = '1' ]; then sed -i '' 's/[[:space:]]*$//' app.py; fi\n"
+        # portable in-place strip: BSD sed needs -i '' while GNU sed rejects it,
+        # so the stub rewrites the file through python3 instead.
+        "if [ \"$fix\" = '1' ]; then\n"
+        "  python3 -c \"import pathlib; p=pathlib.Path('app.py');"
+        " p.write_text('\\\\n'.join(l.rstrip() for l in p.read_text().splitlines()) + '\\\\n')\"\n"
+        "fi\n"
         "echo '[{\"code\":\"S608\",\"filename\":\"app.py\",\"location\":{\"row\":2},"
         "\"message\":\"hardcoded\"}]'\n"
     )

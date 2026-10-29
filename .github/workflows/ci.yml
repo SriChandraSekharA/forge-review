@@ -40,6 +40,11 @@ jobs:
       - name: Typecheck MCP
         run: ./mcp/node_modules/.bin/tsc --noEmit -p mcp/tsconfig.json
 
+      # mcp/dist is a build artifact and no longer committed, so the vitest suite
+      # (which spawns dist/server.js) needs an explicit build first.
+      - name: Build MCP server
+        run: npm run build --prefix mcp
+
       - name: Shellcheck scripts (bash -n)
         run: |
           shopt -s nullglob

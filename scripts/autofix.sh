@@ -47,7 +47,7 @@ fi
 fingerprint() {
   local list="$1" out=""
   while IFS= read -r file; do
-    [ -n "$file" ] && [ -f "$file" ] || continue
+    if [ -z "$file" ] || [ ! -f "$file" ]; then continue; fi
     out="$out$(cksum < "$file")"
   done <<< "$list"
   printf '%s' "$out"
