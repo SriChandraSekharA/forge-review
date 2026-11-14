@@ -5,12 +5,12 @@ on:
     branches: [main]
     paths-ignore:
       - ".omo/**"
-      - ".forge-standard/**"
+      - ".forge-standard-review/**"
   pull_request:
     branches: [main]
     paths-ignore:
       - ".omo/**"
-      - ".forge-standard/**"
+      - ".forge-standard-review/**"
 
 permissions:
   contents: read
@@ -69,10 +69,9 @@ jobs:
         run: node examples/mcp-client.js --workdir "/tmp/with spaces/ci smoke"
 
       # Manual gate for archive/release requiring admin — do not automate secrets.GITHUB_TOKEN archive:
-      # To archive legacies or create a GitHub Release after canonical is verified live:
-      #   gh repo archive SriChandraSekharA/anvil-review-loop  # requires admin
-      #   gh repo archive SriChandraSekharA/qodo-standard-review  # requires admin
-      #   gh release create v1.0.0 --title "v1.0.0" --notes "see CHANGELOG"  # requires contents:write + admin
+      # Legacy repos (anvil-review-loop, qodo-standard-review) were deleted on 2026-11-14; the
+      # canonical repo is now SriChandraSekharA/forge-review.
+      #   gh release create v1.1.3 --title "v1.1.3" --notes "see CHANGELOG"  # requires contents:write + admin
       # These are intentionally NOT in CI; run manually after skills.sh propagation confirmed.
 
   pytest:

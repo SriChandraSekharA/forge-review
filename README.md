@@ -14,19 +14,19 @@ Quota-free iterative code review with continuous loop - no tokens, no quotas, no
 ## Install
 
 ```bash
-npx --yes skills add SriChandraSekharA/forge-standard-review --skill forge-standard-review -g -y
+npx --yes skills add SriChandraSekharA/forge-review --skill forge-standard-review -g -y
 ```
 
 Local install:
 
 ```bash
-npx --yes skills add SriChandraSekharA/forge-standard-review --skill forge-standard-review -g -y
+npx --yes skills add SriChandraSekharA/forge-review --skill forge-standard-review -g -y
 ```
 
 Manual:
 
 ```bash
-git clone https://github.com/SriChandraSekharA/forge-standard-review.git
+git clone https://github.com/SriChandraSekharA/forge-review.git
 ```
 
 ## Features

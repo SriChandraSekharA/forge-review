@@ -8,18 +8,18 @@ Related: `.omo/audit.md`, `.omo/notepad.md`, `package.json`, `SKILL.md`
 
 ## Context
 
-forge-standard-review ships as a publishable skill at `SriChandraSekharA/forge-standard-review` with a local review loop and file-based skill install via `npx skills add`. The team needs to add Model Context Protocol support without breaking the skill install, adding extra publish steps, or splitting concerns across repos.
+forge-standard-review ships as a publishable skill at `SriChandraSekharA/forge-review` with a local review loop and file-based skill install via `npx skills add`. The team needs to add Model Context Protocol support without breaking the skill install, adding extra publish steps, or splitting concerns across repos.
 
 Two layouts are on the table:
 
-* **A: Same-repo `mcp/`** inside `SriChandraSekharA/forge-standard-review` at `mcp/server.ts` (stdio) and `mcp/mcp.json` manifest, using `@modelcontextprotocol/sdk`.
+* **A: Same-repo `mcp/`** inside `SriChandraSekharA/forge-review` at `mcp/server.ts` (stdio) and `mcp/mcp.json` manifest, using `@modelcontextprotocol/sdk`.
 * **B: Separate `forge-standard-review-mcp`** repo that holds the MCP server on its own.
 
 We compared them on six things that actually matter for this project: publish friction, skills.sh crawl, versioning, dep isolation, CI duplication, and UX confusion.
 
 ## Decision
 
-**Use same-repo `mcp/` inside `SriChandraSekharA/forge-standard-review`.**
+**Use same-repo `mcp/` inside `SriChandraSekharA/forge-review`.**
 
 * Server entry: `mcp/server.ts` running stdio transport via `@modelcontextprotocol/sdk`.
 * Manifest: `mcp/mcp.json` at repo root relative `mcp/mcp.json`, referenced from skill metadata where needed.
@@ -34,11 +34,11 @@ Scores are 1 to 5, where 5 is best. Weighted score is weight times score. Weight
 | # | Criterion | Weight | A: Same-repo `mcp/` | A Weighted | B: Separate `forge-standard-review-mcp` | B Weighted | Notes |
 |---|-----------|--------|---------------------|------------|----------------------------------|------------|-------|
 | 1 | Publish friction | 20 | 5 | 100 | 2 | 40 | A needs one tag, one npm/skills publish, one changelog. B needs coordinated releases, two repos to cut, and double the release notes. |
-| 2 | skills.sh crawl | 15 | 4 | 60 | 3 | 45 | `skills.sh` already crawls `SriChandraSekharA/forge-standard-review` for the skill. A stays on that known path, so crawl stays simple. B would need a second crawl entry and a new discovery path to be taught. |
+| 2 | skills.sh crawl | 15 | 4 | 60 | 3 | 45 | `skills.sh` already crawls `SriChandraSekharA/forge-review` for the skill. A stays on that known path, so crawl stays simple. B would need a second crawl entry and a new discovery path to be taught. |
 | 3 | Versioning | 20 | 4 | 80 | 3 | 60 | A keeps skill logic, MCP tools, prompts, and checklist in lockstep under one semver. B splits versions, so users can land on mismatched skill + MCP pairs. |
 | 4 | Dep isolation | 15 | 3 | 45 | 5 | 75 | B isolates MCP deps cleanly. A shares `package.json` and needs care to keep `@modelcontextprotocol/sdk` and MCP deps out of the skill core, for example via `mcp/package.json` or optional peer handling. |
 | 5 | CI duplication | 15 | 5 | 75 | 2 | 30 | A reuses the existing workflows in `.github/workflows`, one matrix, one cache. B duplicates workflows, secrets, and branch protections. |
-| 6 | UX confusion | 15 | 5 | 75 | 2 | 30 | A gives one repo, one install, one README. `npx skills add SriChandraSekharA/forge-standard-review` plus MCP at `mcp/` is easy to explain. B forces users to pick between two repos and two install commands. |
+| 6 | UX confusion | 15 | 5 | 75 | 2 | 30 | A gives one repo, one install, one README. `npx skills add SriChandraSekharA/forge-review` plus MCP at `mcp/` is easy to explain. B forces users to pick between two repos and two install commands. |
 | | **Total** | **100** | | **435** | | **280** | **A wins by 155 points, about 55 percent higher** |
 
 Scoring rationale, short form:
@@ -77,7 +77,7 @@ forge-standard-review/
 
 ## Fallback Note
 
-If same-repo is blocked, for example by an org policy that forbids MCP SDK deps in the skill repo, or by a `skills.sh` rule that rejects mixed repos, fall back to a separate `SriChandraSekharA/forge-standard-review-mcp` repo.
+If same-repo is blocked, for example by an org policy that forbids MCP SDK deps in the skill repo, or by a `skills.sh` rule that rejects mixed repos, fall back to a separate `SriChandraSekharA/forge-review-mcp` repo.
 
 Fallback steps:
 

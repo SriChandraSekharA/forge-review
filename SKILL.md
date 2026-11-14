@@ -41,19 +41,19 @@ checklist that lives with the repo.
 Global install (recommended):
 
 ```bash
-npx skills add SriChandraSekharA/forge-standard-review --skill forge-standard-review -g
+npx skills add SriChandraSekharA/forge-review --skill forge-standard-review -g
 ```
 
 Local project install:
 
 ```bash
-npx skills add SriChandraSekharA/forge-standard-review --skill forge-standard-review
+npx skills add SriChandraSekharA/forge-review --skill forge-standard-review
 ```
 
 Manual clone:
 
 ```bash
-git clone https://github.com/SriChandraSekharA/forge-standard-review.git
+git clone https://github.com/SriChandraSekharA/forge-review.git
 ```
 
 After install the skill is available as `forge-standard-review` via `npx skills add -l`.

@@ -7,8 +7,8 @@ Thanks for helping make forge-standard-review better. This guide explains how to
 Clone and install the skill locally with npx:
 
 ```bash
-git clone https://github.com/SriChandraSekharA/forge-standard-review.git
-cd forge-standard-review
+git clone https://github.com/SriChandraSekharA/forge-review.git
+cd forge-review
 npx --yes skills add . --skill forge-standard-review -g -y
 ```
 

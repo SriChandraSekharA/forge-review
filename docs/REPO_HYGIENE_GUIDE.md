@@ -1,6 +1,6 @@
 # Repo Hygiene — Step 2 How-To
 
-> For `SriChandraSekharA/forge-standard-review` @ `9f0507a` (Pages `minima` + `FUNDING.yml` done). All files below are **non-workflow** so `git push` succeeds without `workflow` scope (unlike `.github/workflows/ci.yml`).
+> For `SriChandraSekharA/forge-review` @ `9f0507a` (Pages `minima` + `FUNDING.yml` done). All files below are **non-workflow** so `git push` succeeds without `workflow` scope (unlike `.github/workflows/ci.yml`).
 
 ## Files to add (7)
 
@@ -35,7 +35,7 @@ title: Forge Standard Review
 message: If you use this skill, please cite
 type: software
 authors: [{given-names: Chandra Sekhar, family-names: A}]
-repository-code: https://github.com/SriChandraSekharA/forge-standard-review
+repository-code: https://github.com/SriChandraSekharA/forge-review
 license: MIT
 ```
 Shows “Cite this repository” button.
@@ -51,7 +51,7 @@ Shows “Cite this repository” button.
 blank_issues_enabled: false
 contact_links:
   - name: Discussions
-    url: https://github.com/SriChandraSekharA/forge-standard-review/discussions
+    url: https://github.com/SriChandraSekharA/forge-review/discussions
     about: Ask questions
 ```
 

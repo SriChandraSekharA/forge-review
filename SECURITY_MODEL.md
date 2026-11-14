@@ -1,7 +1,7 @@
 # Threat model: forge-standard-review
 
 ## System overview
-forge-standard-review is a local, offline code-review tool, distributed as an agent skill (`npx skills add SriChandraSekharA/forge-standard-review`) and as an npm-publishable stdio MCP server (`forge-standard-review-mcp`, also built by `mcp/Dockerfile`). There is no network service, no authentication and no hosted backend. `SECURITY.md` only describes vulnerability disclosure; this document is the security model.
+forge-standard-review is a local, offline code-review tool, distributed as an agent skill (`npx skills add SriChandraSekharA/forge-review`) and as an npm-publishable stdio MCP server (`forge-standard-review-mcp`, also built by `mcp/Dockerfile`). There is no network service, no authentication and no hosted backend. `SECURITY.md` only describes vulnerability disclosure; this document is the security model.
 
 ### Components
 | Component | Code | Notes |

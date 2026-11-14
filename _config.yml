@@ -2,13 +2,34 @@ remote_theme: minima
 title: Forge Standard Review
 description: Quota-free iterative code review with continuous loop — idempotent .forge-standard-review/ per-repo memory
 url: "https://srichandrasekhara.github.io"
-baseurl: "/forge-standard-review"
-# canonical: https://srichandrasekhara.github.io/forge-standard-review/
+baseurl: "/forge-review"
+# canonical: https://srichandrasekhara.github.io/forge-review/
 plugins:
   - jekyll-feed
   - jekyll-seo-tag
   - jekyll-sitemap
 markdown: kramdown
+
+# Build exclusions — internal material is not published as web pages.
+# Published: index.md, README.md, SKILL.md, LICENSE, CHANGELOG.md,
+# CODE_OF_CONDUCT.md, SECURITY.md, assets/, robots.txt, _config.yml.
+exclude:
+  - AGENTS.md
+  - BOARD.md
+  - docs/
+  - mcp/
+  - tests/
+  - scripts/
+  - references/
+  - templates/
+  - examples/
+  - package.json
+  - package-lock.json
+  - mcp/package-lock.json
+  - vitest.config.ts
+  - .github/
+  - node_modules
+  - vendor
 
 minima:
   skin: auto
@@ -17,7 +38,7 @@ defaults:
   - scope:
       path: ""
     values:
-      image: https://srichandrasekhara.github.io/forge-standard-review/assets/badge.svg
+      image: https://srichandrasekhara.github.io/forge-review/assets/badge.svg
 
 # seo defaults for jekyll-seo-tag
 author:

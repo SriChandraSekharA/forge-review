@@ -1,6 +1,6 @@
 # forge-standard-review MCP Server
 
-Same-repo MCP server at `mcp/` inside `SriChandraSekharA/forge-standard-review` per ADR-001.
+Same-repo MCP server at `mcp/` inside `SriChandraSekharA/forge-review` per ADR-001.
 Stdio transport via `@modelcontextprotocol/sdk`, wrapping the existing skill `scripts/review.sh`
 as tool `forge_review`.
 

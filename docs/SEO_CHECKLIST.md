@@ -2,7 +2,7 @@
 
 Generated: 2026-09-05T09:00:00+05:30 IST (2026-09-05T03:30:00Z)
 Workdir quoted: `"/path/to/forge-standard-review"`
-Canonical: `SriChandraSekharA/forge-standard-review` HEAD `c9724d576d57a70154be9b3c184918675f9ff605` tag `v1.1.0`
+Canonical: `SriChandraSekharA/forge-review` HEAD `c9724d576d57a70154be9b3c184918675f9ff605` tag `v1.1.0`
 Skills.sh canonical (lowercase): `https://www.skills.sh/srichandrasekhara/forge-standard-review` (og:title `srichandrasekhara/forge-standard-review — Agent skills`)
 README: 242 lines | docs/MCP.md: 147 lines | mcp/README.md: 115 lines | .omo/audit-v1.1.1.md: 406 lines | package.json keywords: 19 | assets/badge.svg: 798 B | assets/demo.gif: rendered by `assets/make-demo-gif.py` (~135 KB)
 
@@ -15,9 +15,9 @@ README: 242 lines | docs/MCP.md: 147 lines | mcp/README.md: 115 lines | .omo/aud
 ### Current state (2026-09-05T03:29Z probe)
 
 ```bash
-gh api repos/SriChandraSekharA/forge-standard-review --jq '{topics,archived,visibility,license}'
+gh api repos/SriChandraSekharA/forge-review --jq '{topics,archived,visibility,license}'
 # => {"archived":false,"license":{"key":"mit","spdx_id":"MIT"},"topics":["code-quality","code-review","owasp","pr-review","pull-request-review","review-loop","security-review","vulnerability-review"],"visibility":"public"}
-gh api repos/SriChandraSekharA/forge-standard-review --jq '.topics | join(", ")'
+gh api repos/SriChandraSekharA/forge-review --jq '.topics | join(", ")'
 # => code-quality, code-review, owasp, pr-review, pull-request-review, review-loop, security-review, vulnerability-review
 ```
 
@@ -29,11 +29,11 @@ gh api repos/SriChandraSekharA/forge-standard-review --jq '.topics | join(", ")'
 ### Action if drift
 
 ```bash
-gh api repos/SriChandraSekharA/forge-standard-review --jq .topics
+gh api repos/SriChandraSekharA/forge-review --jq .topics
 # if count !=8 or missing keyword:
-gh repo edit SriChandraSekharA/forge-standard-review --add-topic code-quality --add-topic code-review --add-topic owasp --add-topic pr-review --add-topic pull-request-review --add-topic review-loop --add-topic security-review --add-topic vulnerability-review
+gh repo edit SriChandraSekharA/forge-review --add-topic code-quality --add-topic code-review --add-topic owasp --add-topic pr-review --add-topic pull-request-review --add-topic review-loop --add-topic security-review --add-topic vulnerability-review
 # verify:
-gh api repos/SriChandraSekharA/forge-standard-review --jq .topics
+gh api repos/SriChandraSekharA/forge-review --jq .topics
 ```
 
 Why 8: GitHub indexes topics for search/discovery; keywords mirror `package.json` keywords for cross-signal (npm + GitHub + skills.sh).
@@ -54,16 +54,16 @@ Why 8: GitHub indexes topics for search/discovery; keywords mirror `package.json
 
 ### Link correctness — canonical case note
 
-- Repo (GitHub): `SriChandraSekharA/forge-standard-review` (capital S,C,S,A) — used in `README.md:12,18,24`, `SKILL.md:36,41`, `package.json` not containing URL (clean).
+- Repo (GitHub): `SriChandraSekharA/forge-review` (capital S,C,S,A) — used in `README.md:12,18,24`, `SKILL.md:36,41`, `package.json` not containing URL (clean).
 - skills.sh detail page: **lowercase** `https://www.skills.sh/srichandrasekhara/forge-standard-review` — confirmed via `curl -sL` og:title `srichandrasekhara/forge-standard-review — Agent skills` and canonical `<link rel="canonical" href="https://www.skills.sh/srichandrasekhara/forge-standard-review">`.
 - README current root link `https://skills.sh` (shields parent href) is valid root; detail link should be `https://www.skills.sh/srichandrasekhara/forge-standard-review` for SEO — document as next patch if adding deep link (do not edit in this 8.6 task).
-- `git clone https://github.com/SriChandraSekharA/forge-standard-review.git` at `README.md:24` ✅ correct case.
+- `git clone https://github.com/SriChandraSekharA/forge-review.git` at `README.md:24` ✅ correct case.
 
 ### Install snippets (SEO for npx copy-paste)
 
 ```bash
-npx --yes skills add SriChandraSekharA/forge-standard-review --skill forge-standard-review -g -y  # README:12,18
-git clone https://github.com/SriChandraSekharA/forge-standard-review.git                   # README:24
+npx --yes skills add SriChandraSekharA/forge-review --skill forge-standard-review -g -y  # README:12,18
+git clone https://github.com/SriChandraSekharA/forge-review.git                   # README:24
 ```
 
 ---
@@ -152,19 +152,19 @@ file /tmp/demo-check.gif | head
 
 ```bash
 # Step 1 — 308 redirect check (root -> www)
-curl -s -o /tmp/skills_check.txt -w "%{http_code}" "https://skills.sh/SriChandraSekharA/forge-standard-review"
-# => 308 Redirecting... (Location: https://www.skills.sh/SriChandraSekharA/forge-standard-review)
+curl -s -o /tmp/skills_check.txt -w "%{http_code}" "https://skills.sh/SriChandraSekharA/forge-review"
+# => 308 Redirecting... (Location: https://www.skills.sh/SriChandraSekharA/forge-review)
 
 # Step 2 — follow redirect, capture HTTP code (lowercase canonical in HTML)
-curl -sL -w "\nHTTP_CODE:%{http_code}\n" "https://skills.sh/SriChandraSekharA/forge-standard-review"
+curl -sL -w "\nHTTP_CODE:%{http_code}\n" "https://skills.sh/SriChandraSekharA/forge-review"
 # => HTTP_CODE:404 body NEXT_HTTP_ERROR_FALLBACK;404 "This page could not be found"
 # Body og:title: srichandrasekhara/forge-standard-review — Agent skills
 # Body title:     srichandrasekhara/forge-standard-review — Agent skills
 # Footer: Made with care by Vercel — Next.js 404 shell
 
 # Step 3 — verify headers
-curl -sI "https://skills.sh/SriChandraSekharA/forge-standard-review" | head -20
-# => HTTP/2 308 location https://www.skills.sh/SriChandraSekharA/forge-standard-review
+curl -sI "https://skills.sh/SriChandraSekharA/forge-review" | head -20
+# => HTTP/2 308 location https://www.skills.sh/SriChandraSekharA/forge-review
 
 # Step 4 — direct www lowercase probe
 curl -sL -w "\nHTTP_CODE:%{http_code}\n" "https://www.skills.sh/srichandrasekhara/forge-standard-review" | tail -5
@@ -222,7 +222,7 @@ cat "/path/to/forge-standard-review/assets/npx-proof.txt"
 
 ```bash
 # Global (-g) — writes to ~/.agents/skills/forge-standard-review (user-level)
-npx --yes skills add SriChandraSekharA/forge-standard-review --skill forge-standard-review -g -y
+npx --yes skills add SriChandraSekharA/forge-review --skill forge-standard-review -g -y
 # When 404 pending: errors "Skill not found" or 404 fetch — expected until HTTP_CODE 200
 # When live: installs globally, verify with:
 npx --yes skills add -l 2>&1 | grep forge-standard-review  # lists installed
@@ -231,7 +231,7 @@ npx skills list 2>&1 | grep forge-standard-review
 ls -la ~/.agents/skills/forge-standard-review/SKILL.md && head -5 ~/.agents/skills/forge-standard-review/SKILL.md
 
 # Local project install (-l is list, no -g = project-local under <repo>/.agents or node_modules)
-npx --yes skills add SriChandraSekharA/forge-standard-review --skill forge-standard-review -y
+npx --yes skills add SriChandraSekharA/forge-review --skill forge-standard-review -y
 # installs to project; verify:
 npx --yes skills add -l 2>&1 | grep -A2 "forge-standard-review"
 # difference: -g = global ~/.agents/skills/, no -g = project-local (skills-lock.json tracked)
@@ -307,7 +307,7 @@ All tables quote `workdir` via `path.resolve` + `existsSync` + `spawn cwd`, no s
 
 ```bash
 # Topics still 8
-gh api repos/SriChandraSekharA/forge-standard-review --jq .topics | wc -l; gh api repos/SriChandraSekharA/forge-standard-review --jq .topics
+gh api repos/SriChandraSekharA/forge-review --jq .topics | wc -l; gh api repos/SriChandraSekharA/forge-review --jq .topics
 
 # No anvil leak
 grep -i anvil /path/to/forge-standard-review/package.json; echo anvil_exit:$?
@@ -330,7 +330,7 @@ npx --yes skills add "/path/to/forge-standard-review" -l 2>&1 | grep -E "Found|f
 cat /path/to/forge-standard-review/assets/npx-proof.txt | grep -A2 "Found"
 
 # skills.sh poll
-curl -sL -w "\nHTTP_CODE:%{http_code}\n" "https://skills.sh/SriChandraSekharA/forge-standard-review" | tail -5
+curl -sL -w "\nHTTP_CODE:%{http_code}\n" "https://skills.sh/SriChandraSekharA/forge-review" | tail -5
 curl -sL -w "\nHTTP_CODE:%{http_code}\n" "https://www.skills.sh/srichandrasekhara/forge-standard-review" | tail -5
 ```
 
@@ -355,7 +355,7 @@ curl -sL -w "\nHTTP_CODE:%{http_code}\n" "https://www.skills.sh/srichandrasekhar
 ## 16. Next Steps After This Checklist
 
 1. Poll `curl -sL https://www.skills.sh/srichandrasekhara/forge-standard-review` until `HTTP_CODE:200`.
-2. Then `npx --yes skills add SriChandraSekharA/forge-standard-review --skill forge-standard-review -g -y` and verify `npx skills list` shows `forge-standard-review`.
+2. Then `npx --yes skills add SriChandraSekharA/forge-review --skill forge-standard-review -g -y` and verify `npx skills list` shows `forge-standard-review`.
 3. Then `npx skills find forge-standard-review` — should appear in search index within hours of 200.
 4. Then patch `SKILL.md:6` title drift `# Anvil Review Loop` → `# Forge Standard` (keep `name: forge-standard-review`).
 5. Re-verify `grep -i anvil package.json` still 0 after title fix.

@@ -34,5 +34,17 @@
   },
   "devDependencies": {
     "vitest": "^3.2.7"
-  }
+  },
+  "files": [
+    "index.md",
+    "README.md",
+    "SKILL.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md",
+    "SECURITY.md",
+    "assets/",
+    "robots.txt",
+    "_config.yml"
+  ]
 }

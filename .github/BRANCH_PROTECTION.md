@@ -1,4 +1,4 @@
-# Branch Protection — `SriChandraSekharA/forge-standard-review` `main`
+# Branch Protection — `SriChandraSekharA/forge-review` `main`
 
 > Workdir: `"/path/to/forge-standard-review"` — HEAD `c9724d5` tag `v1.1.0` `cb1fa70` origin `forge-standard-review`
 > Generated: 2026-09-05T08:55 IST (Task 8.5 Hardening & Branch Protection)
@@ -7,12 +7,12 @@
 ## Evidence (quoted workdir — read-only verification)
 
 ```bash
-# gh api repos/SriChandraSekharA/forge-standard-review --jq '{archived,license,topics}'
-gh api repos/SriChandraSekharA/forge-standard-review --jq '{archived,license:.license.spdx_id,topics:(.topics|length),visibility}'
+# gh api repos/SriChandraSekharA/forge-review --jq '{archived,license,topics}'
+gh api repos/SriChandraSekharA/forge-review --jq '{archived,license:.license.spdx_id,topics:(.topics|length),visibility}'
 # => {"archived":false,"license":"MIT","topics":8,"visibility":"public"}
 # topics: ["code-quality","code-review","owasp","pr-review","pull-request-review","review-loop","security-review","vulnerability-review"] (8)
 # archived:false correct — canonical stays public, not archived
-# license MIT correct — gh api repos/SriChandraSekharA/forge-standard-review/license => {"name":"LICENSE","path":"LICENSE","license":{"key":"mit","spdx_id":"MIT"}}
+# license MIT correct — gh api repos/SriChandraSekharA/forge-review/license => {"name":"LICENSE","path":"LICENSE","license":{"key":"mit","spdx_id":"MIT"}}
 
 cat "/path/to/forge-standard-review/LICENSE" | head -5
 # => MIT License / Copyright (c) 2026 Chandra Sekhar — PASS (MIT 2026 Chandra Sekhar, no anvil/qodo leak in LICENSE)
@@ -45,7 +45,7 @@ grep -n "path.resolve.*workdir\|existsSync.*workdir\|spawn.*cwd" "/path/to/forge
 ## Branch Protection API Probe (read-only — fallback to UI)
 
 ```bash
-gh api repos/SriChandraSekharA/forge-standard-review/branches/main/protection 2>&1 | head -5
+gh api repos/SriChandraSekharA/forge-review/branches/main/protection 2>&1 | head -5
 # => {"message":"Resource not accessible by personal access token","documentation_url":"https://docs.github.com/rest/branches/branch-protection#get-branch-protection","status":"403"}
 # gh: Resource not accessible by personal access token (HTTP 403)
 # Also seen as 404 when token lacks admin:read — same fallback.
@@ -55,9 +55,9 @@ gh api repos/SriChandraSekharA/forge-standard-review/branches/main/protection 2>
 
 ## UI Steps (owner/admin — manual, no automation)
 
-> Requires admin on `SriChandraSekharA/forge-standard-review`. Do not automate via `GITHUB_TOKEN` in CI (ci.yml has `permissions: contents: read` only).
+> Requires admin on `SriChandraSekharA/forge-review`. Do not automate via `GITHUB_TOKEN` in CI (ci.yml has `permissions: contents: read` only).
 
-1. Open `https://github.com/SriChandraSekharA/forge-standard-review/settings/branches` (quoted workdir irrelevant — browser step).
+1. Open `https://github.com/SriChandraSekharA/forge-review/settings/branches` (quoted workdir irrelevant — browser step).
 2. Click **Add classic branch protection rule** (or **Add rule**).
 3. **Branch name pattern:** `main`
 4. Check **Require a pull request before merging**
@@ -76,7 +76,7 @@ gh api repos/SriChandraSekharA/forge-standard-review/branches/main/protection 2>
 Verify after first PR:
 ```bash
 # As owner, confirm rule applied (requires admin token for API; UI otherwise):
-gh api repos/SriChandraSekharA/forge-standard-review/branches/main/protection --jq '{required_status_checks, required_pull_request_reviews, allow_force_pushes}' 2>&1 | head -20
+gh api repos/SriChandraSekharA/forge-review/branches/main/protection --jq '{required_status_checks, required_pull_request_reviews, allow_force_pushes}' 2>&1 | head -20
 # Expect: required_status_checks.contexts contains ci, required_pull_request_reviews.required_approving_review_count >=1, allow_force_pushes.enabled == false
 # If 403 again, verify visually in Settings > Branches that the rule shows for main with the checks above.
 ```
@@ -87,10 +87,10 @@ gh api repos/SriChandraSekharA/forge-standard-review/branches/main/protection --
 
 ```bash
 # Preview what would be set (dry-run — no write if 403):
-gh api repos/SriChandraSekharA/forge-standard-review/branches/main/protection 2>&1 | head
+gh api repos/SriChandraSekharA/forge-review/branches/main/protection 2>&1 | head
 
 # Apply protection via API (requires admin, quoted workdir shown for parity with server.ts validation):
-gh api repos/SriChandraSekharA/forge-standard-review/branches/main/protection -X PUT \
+gh api repos/SriChandraSekharA/forge-review/branches/main/protection -X PUT \
   -f required_status_checks[strict]=true \
   -f required_status_checks[contexts][]="ci" \
   -f enforce_admins=true \
@@ -101,7 +101,7 @@ gh api repos/SriChandraSekharA/forge-standard-review/branches/main/protection -X
   -f allow_deletions[enabled]=false 2>&1 | head -20
 
 # Legacy API alternative if above contexts key needs array JSON:
-gh api repos/SriChandraSekharA/forge-standard-review/branches/main/protection \
+gh api repos/SriChandraSekharA/forge-review/branches/main/protection \
   -X PUT --input <(cat <<'JSON'
 {
   "required_status_checks": {"strict": true, "contexts": ["ci"]},
@@ -115,7 +115,7 @@ JSON
 ) 2>&1 | head
 
 # Verify:
-gh api repos/SriChandraSekharA/forge-standard-review/branches/main/protection --jq '{required_status_checks, required_pull_request_reviews, allow_force_pushes, allow_deletions, enforce_admins}' 2>&1
+gh api repos/SriChandraSekharA/forge-review/branches/main/protection --jq '{required_status_checks, required_pull_request_reviews, allow_force_pushes, allow_deletions, enforce_admins}' 2>&1
 # Fallback to UI if 403: Resource not accessible by personal access token — configure via Settings > Branches as above.
 ```
 
@@ -131,8 +131,8 @@ gh api repos/SriChandraSekharA/forge-standard-review/branches/main/protection --
 After owner applies rule via UI or admin PAT, re-run:
 
 ```bash
-gh api repos/SriChandraSekharA/forge-standard-review --jq '{archived,topics: (.topics|length), license: .license.spdx_id}' # archived:false topics:8 license:MIT
-gh api repos/SriChandraSekharA/forge-standard-review/branches/main/protection --jq . 2>&1 | head -40 # 200 with contexts, or 403 fallback
+gh api repos/SriChandraSekharA/forge-review --jq '{archived,topics: (.topics|length), license: .license.spdx_id}' # archived:false topics:8 license:MIT
+gh api repos/SriChandraSekharA/forge-review/branches/main/protection --jq . 2>&1 | head -40 # 200 with contexts, or 403 fallback
 bash -n "/path/to/forge-standard-review/scripts/"*.sh; echo ok
 npx --prefix "/path/to/forge-standard-review/mcp" tsc --noEmit -p mcp/tsconfig.json && echo tsc ok
 npm test 2>&1 | grep -E "Test Files|Tests"

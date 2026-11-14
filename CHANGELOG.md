@@ -40,7 +40,7 @@ A Greptile-inspired feature wave: the reviewer now learns from your feedback, en
 
 ## [v1.1.2] - 2026-09-07
 
-- Rename `forge-standard` → `forge-standard-review` per review name requirement: `mv` dir, `SKILL.md` `name: forge-standard-review`, `.forge-standard-review/` isolation (68 refs), `package.json`/`mcp` keywords 19, `npx -l` `Found 1 skill`, new public repo `SriChandraSekharA/forge-standard-review` UI-created, pushed `9fd650d`, tagged `v1.1.2 677627c`, `ci.yml` 71 lines, topics 8, `https://srichandrasekhara.github.io/forge-standard-review/`
+- Rename `forge-standard` → `forge-standard-review` per review name requirement: `mv` dir, `SKILL.md` `name: forge-standard-review`, `.forge-standard-review/` isolation (68 refs), `package.json`/`mcp` keywords 19, `npx -l` `Found 1 skill`, new public repo `SriChandraSekharA/forge-review` UI-created, pushed `9fd650d`, tagged `v1.1.2 677627c`, `ci.yml` 71 lines, topics 8, `https://srichandrasekhara.github.io/forge-review/`
 - Jekyll Pages already live `200` but dark toggle pending (fixed in v1.1.3)
 
 ## [v1.1.1] - 2026-09-05
@@ -51,7 +51,7 @@ A Greptile-inspired feature wave: the reviewer now learns from your feedback, en
 
 **Release closure:** `v1.1.0: OSS baseline + MCP stdio server`
 
-- **Date (IST):** 2026-09-05T06:09:57+05:30 (commit `c9724d5`) — tag `v1.1.0` `cb1fa7068c99a24175ef3caaaa0f3f28b1028165` pushed `2026-09-05T00:40:32Z` (gh `created_at: 2026-09-05T00:40:25Z`, `published_at: 2026-09-05T03:06:48Z` per `gh api repos/SriChandraSekharA/forge-standard-review/releases/tags/v1.1.0`)
+- **Date (IST):** 2026-09-05T06:09:57+05:30 (commit `c9724d5`) — tag `v1.1.0` `cb1fa7068c99a24175ef3caaaa0f3f28b1028165` pushed `2026-09-05T00:40:32Z` (gh `created_at: 2026-09-05T00:40:25Z`, `published_at: 2026-09-05T03:06:48Z` per `gh api repos/SriChandraSekharA/forge-review/releases/tags/v1.1.0`)
 - **HEAD:** `c9724d576d57a70154be9b3c184918675f9ff605` (origin/main, HEAD -> main) — `git log --oneline -5` confirms `c9724d5 feat: add OSS baseline, MCP stdio server, tests and examples with verify.log` on top of `09312ed (v1.0.0)`
 - **Tag:** `cb1fa7068c99a24175ef3caaaa0f3f28b1028165` `refs/tags/v1.1.0` -> `c9724d5` `refs/tags/v1.1.0^{}` via `git ls-remote --tags origin` — no move of `cb1fa70`, no force
 - **Diff:** 43 files changed, 6482 insertions(+), 3 deletions(-) — per `git show c9724d5 --stat` (see `.omo/audit-v1.1.1.md` raw capture)
@@ -65,7 +65,7 @@ A Greptile-inspired feature wave: the reviewer now learns from your feedback, en
 - `.github/ISSUE_TEMPLATE/bug_report.md` + `feature_request.md` + `PULL_REQUEST_TEMPLATE.md`
 - `.github/workflows/ci.yml` — 2090 bytes, matrix node 20,22, `bash -n`, `tsc --noEmit`, 28 tests, stdio smoke with quoted workdir + spaces path, `mcp-client.js` checks — was absent at 09312ed, now present
 - `.github/BRANCH_PROTECTION.md` (Task 8.5) + `docs/SEO_CHECKLIST.md` (Task 8.6) — hardening/promo
-- `gh api repos/SriChandraSekharA/forge-standard-review` — topics 8 `["code-quality","code-review","owasp","pr-review","pull-request-review","review-loop","security-review","vulnerability-review"]`, `archived:false`, `visibility:public`, `license:mit` — topics 8 documented
+- `gh api repos/SriChandraSekharA/forge-review` — topics 8 `["code-quality","code-review","owasp","pr-review","pull-request-review","review-loop","security-review","vulnerability-review"]`, `archived:false`, `visibility:public`, `license:mit` — topics 8 documented
 - `workdir quoted:` `"/path/to/forge-standard-review"` — all commands `git -C "...` + quoted paths
 
 ### MCP SDK 1.30.0 stdio forge_review
@@ -87,22 +87,22 @@ A Greptile-inspired feature wave: the reviewer now learns from your feedback, en
 
 ### Topics 8
 
-- `code-quality`, `code-review`, `owasp`, `pr-review`, `pull-request-review`, `review-loop`, `security-review`, `vulnerability-review` — verified `gh api repos/SriChandraSekharA/forge-standard-review --jq .topics`
+- `code-quality`, `code-review`, `owasp`, `pr-review`, `pull-request-review`, `review-loop`, `security-review`, `vulnerability-review` — verified `gh api repos/SriChandraSekharA/forge-review --jq .topics`
 
 ### Manual release (gh + UI fallback)
 
 Released via:
 
 ```bash
-gh release create v1.1.0 --repo SriChandraSekharA/forge-standard-review --title "v1.1.0: OSS baseline + MCP stdio server" --target c9724d5 --notes "**Full Changelog**: https://github.com/SriChandraSekharA/forge-standard-review/compare/v1.0.0...v1.1.0"
+gh release create v1.1.0 --repo SriChandraSekharA/forge-review --title "v1.1.0: OSS baseline + MCP stdio server" --target c9724d5 --notes "**Full Changelog**: https://github.com/SriChandraSekharA/forge-review/compare/v1.0.0...v1.1.0"
 # or annotated tag already pushed:
 git tag -a v1.1.0 -m "v1.1.0: OSS baseline + MCP stdio server with verified live smoke" c9724d5
 git push origin v1.1.0 --follow-tags  # --follow-tags, no --force, no move of cb1fa70
-gh api repos/SriChandraSekharA/forge-standard-review/releases/tags/v1.1.0 --jq '.tag_name, .target_commitish, .published_at'
+gh api repos/SriChandraSekharA/forge-review/releases/tags/v1.1.0 --jq '.tag_name, .target_commitish, .published_at'
 # => v1.1.0, main, 2026-09-05T03:06:48Z (200) — if 404, manual pending -> UI fallback
 ```
 
-**UI fallback:** `https://github.com/SriChandraSekharA/forge-standard-review/releases` → `Draft a new release` → `Choose a tag: v1.1.0` → `Target: c9724d576d57a70154be9b3c184918675f9ff605` (commit `c9724d5`) → `Release title: v1.1.0: OSS baseline + MCP stdio server` → `Publish release` — verify `git ls-remote --tags origin` shows `cb1fa70 refs/tags/v1.1.0` and `c9724d5 refs/tags/v1.1.0^{}`
+**UI fallback:** `https://github.com/SriChandraSekharA/forge-review/releases` → `Draft a new release` → `Choose a tag: v1.1.0` → `Target: c9724d576d57a70154be9b3c184918675f9ff605` (commit `c9724d5`) → `Release title: v1.1.0: OSS baseline + MCP stdio server` → `Publish release` — verify `git ls-remote --tags origin` shows `cb1fa70 refs/tags/v1.1.0` and `c9724d5 refs/tags/v1.1.0^{}`
 
 **Guardrails:** no `gh repo archive` retry in this closure (legacies `anvil-review-loop` + `qodo-standard-review` remain `archived:false` pending manual after skills.sh live), no move of `cb1fa70`, no edit of `mcp/dist` directly, use quoted `workdir` param and `git -C "/path/to/forge-standard-review"`
 

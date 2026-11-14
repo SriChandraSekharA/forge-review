@@ -1,10 +1,10 @@
 # Archive Runbook — Manual Admin Closure
 
-> **Scope:** `SriChandraSekharA/forge-standard-review` (canonical, stays `archived:false`) + legacies `SriChandraSekharA/anvil-review-loop` and `SriChandraSekharA/qodo-standard-review` (to be `archived:true` when owner chooses). All paths quoted; no retry with current token; no `git push --force`.
+> **Scope:** `SriChandraSekharA/forge-review` (canonical, stays `archived:false`) + legacies `SriChandraSekharA/anvil-review-loop` and `SriChandraSekharA/qodo-standard-review` (to be `archived:true` when owner chooses). All paths quoted; no retry with current token; no `git push --force`.
 
 ## Context (Task 8.1 snapshot 2026-09-05)
 
-Canonical workdir: `"/path/to/forge-standard-review"` — HEAD `c9724d5` tag `v1.1.0` (`cb1fa70` tag object) `origin/main` synced. Release `v1.1.0` exists at `https://github.com/SriChandraSekharA/forge-standard-review/releases/tag/v1.1.0` (verified `gh api repos/SriChandraSekharA/forge-standard-review/releases/tags/v1.1.0 --jq .tag_name` → `v1.1.0`, `2026-09-05T03:06:48Z` — user says released; confirmed `gh api repos/SriChandraSekharA/forge-standard-review/releases --jq '.[].tag_name'` → `v1.1.0`).
+Canonical workdir: `"/path/to/forge-standard-review"` — HEAD `c9724d5` tag `v1.1.0` (`cb1fa70` tag object) `origin/main` synced. Release `v1.1.0` exists at `https://github.com/SriChandraSekharA/forge-review/releases/tag/v1.1.0` (verified `gh api repos/SriChandraSekharA/forge-review/releases/tags/v1.1.0 --jq .tag_name` → `v1.1.0`, `2026-09-05T03:06:48Z` — user says released; confirmed `gh api repos/SriChandraSekharA/forge-review/releases --jq '.[].tag_name'` → `v1.1.0`).
 
 Legacies at 2026-09-05 — OSS baseline + `ARCHIVED_NOTICE` + banner merged, archive still manual:
 
@@ -14,7 +14,7 @@ Legacies at 2026-09-05 — OSS baseline + `ARCHIVED_NOTICE` + banner merged, arc
 | `anvil-review-loop` | `c087540` | `false` | 8 (`architecture-review,code-quality-review,code-review,owasp-review,pr-review,review-loop,security-review,vulnerability-review`) | `mit` |
 | `qodo-standard-review` | `79933de` | `false` | 0 | `mit` |
 
-Banner verified: `cat "/tmp/anvil-review-loop/README.md" | head -n 3` and `cat "/tmp/qodo-standard-review/README.md" | head -n 3` both start `> **Archived - moved to forge-standard-review** ... Use SriChandraSekharA/forge-standard-review instead. See ARCHIVED_NOTICE.md`. Full notice at `cat "/tmp/anvil-review-loop/ARCHIVED_NOTICE.md"` and `cat "/tmp/qodo-standard-review/ARCHIVED_NOTICE.md"` — 43 lines, canonical link + migration steps + draft-defer note (`archived:true` pending Task 9/manual step).
+Banner verified: `cat "/tmp/anvil-review-loop/README.md" | head -n 3` and `cat "/tmp/qodo-standard-review/README.md" | head -n 3` both start `> **Archived - moved to forge-standard-review** ... Use SriChandraSekharA/forge-review instead. See ARCHIVED_NOTICE.md`. Full notice at `cat "/tmp/anvil-review-loop/ARCHIVED_NOTICE.md"` and `cat "/tmp/qodo-standard-review/ARCHIVED_NOTICE.md"` — 43 lines, canonical link + migration steps + draft-defer note (`archived:true` pending Task 9/manual step).
 
 403 history (do **not** retry on current token):
 
@@ -36,7 +36,7 @@ Steps per legacy repo (`SriChandraSekharA/anvil-review-loop`, then if desired `S
 2. Scroll to **Danger Zone** → click **Archive this repository**.
 3. Read confirmation: repo becomes read-only, issues/PRs closed, no new releases. Check the box `I understand...` and confirm **Archive**.
 4. Verify banner shows `This repository has been archived.` on the repo homepage (collapses edit buttons).
-5. Repeat for second legacy if chosen. Canonical `forge-standard-review` stays unarchived — do **not** archive `SriChandraSekharA/forge-standard-review`.
+5. Repeat for second legacy if chosen. Canonical `forge-standard-review` stays unarchived — do **not** archive `SriChandraSekharA/forge-review`.
 
 No `git push --force`, no `gh repo archive` retry with the current `gho_` token. UI archival is idempotent — second click shows `Unarchive`.
 
@@ -67,7 +67,7 @@ Run all after archival (or to prove still `false` before manual step):
 
 ```bash
 # 1) canonical stays not archived, 8 topics, MIT — expect archived:false topics 8 license:mit
-gh api repos/SriChandraSekharA/forge-standard-review --jq '{archived,topics,license}'
+gh api repos/SriChandraSekharA/forge-review --jq '{archived,topics,license}'
 # -> {"archived":false,"license":{"key":"mit",...},"topics":["code-quality","code-review","owasp","pr-review","pull-request-review","review-loop","security-review","vulnerability-review"]}
 
 # 2) legacies — expect archived:true after owner archives (currently false, pending)
@@ -75,7 +75,7 @@ gh api repos/SriChandraSekharA/anvil-review-loop --jq '{archived,topics,license}
 gh api repos/SriChandraSekharA/qodo-standard-review --jq '{archived,topics,license}'
 
 # shorthand archived-only
-gh api repos/SriChandraSekharA/forge-standard-review --jq .archived        # false
+gh api repos/SriChandraSekharA/forge-review --jq .archived        # false
 gh api repos/SriChandraSekharA/anvil-review-loop --jq .archived    # true after manual
 gh api repos/SriChandraSekharA/qodo-standard-review --jq .archived # true after manual (if chosen)
 
@@ -95,14 +95,14 @@ head -n 3 "/tmp/qodo-standard-review/README.md"
 git -C "/path/to/forge-standard-review" rev-parse HEAD  # 178dea6 (v1.1.3)
 git -C "/path/to/forge-standard-review" tag -l -n1      # v1.0.0 v1.1.0 v1.1.1 v1.1.2 v1.1.3
 git -C "/path/to/forge-standard-review" log --oneline -4 # 178dea6..5ededa3..ea93521..9f0507a
-gh api repos/SriChandraSekharA/forge-standard-review/releases/tags/v1.1.3 --jq .tag_name  # v1.1.3 (after UI publish)
-gh api repos/SriChandraSekharA/forge-standard-review/releases --jq '.[].tag_name' # list v1.1.3 when live
+gh api repos/SriChandraSekharA/forge-review/releases/tags/v1.1.3 --jq .tag_name  # v1.1.3 (after UI publish)
+gh api repos/SriChandraSekharA/forge-review/releases --jq '.[].tag_name' # list v1.1.3 when live
 # v1.1.2 9fd650d / v1.1.1 7a28222 / v1.1.0 cb1fa70 heads below — tag push via git push --tags (no gh release scope)
 git ls-remote --tags origin | grep v1.1.3  # eb55395 refs/tags/v1.1.3 -> 178dea6^{}
 
 # 6) skills.sh propagation (quoted curl -I — 308→200 when indexed; may be 404→200 propagation delay, not blocking)
-curl -I "https://skills.sh/SriChandraSekharA/forge-standard-review"
-curl -I "https://www.skills.sh/SriChandraSekharA/forge-standard-review"
+curl -I "https://skills.sh/SriChandraSekharA/forge-review"
+curl -I "https://www.skills.sh/SriChandraSekharA/forge-review"
 # expected eventually HTTP/2 200; while stale may show 308 → 307 → 404 (see snapshots above)
 ```
 
@@ -117,7 +117,7 @@ Legacy `archived:false → true` transition is owner-gated; no automated `gh rep
 
 - `403` on `gh repo archive` → confirms non-admin token; do not retry — use UI or admin PAT per Option B.
 - `archived:false` after UI click → hard refresh repo settings, re-run `gh api repos/... --jq .archived`; GraphQL cache may lag seconds.
-- `skills.sh` `curl -I` 404 → crawl delay (<24h after `c9724d5` push with 8 topics); re-run `curl -I https://skills.sh/SriChandraSekharA/forge-standard-review` after a day. Not blocking archive.
+- `skills.sh` `curl -I` 404 → crawl delay (<24h after `c9724d5` push with 8 topics); re-run `curl -I https://skills.sh/SriChandraSekharA/forge-review` after a day. Not blocking archive.
 
 ## Release v1.1.3 — manual gate (same 403 as archive)
 
@@ -130,8 +130,8 @@ gh release create v1.1.3 --title "v1.1.3: site SEO + sponsors + CI fixes + smoke
 
 Owner UI fallback (same as archive Option A):
 
-1. `https://github.com/SriChandraSekharA/forge-standard-review/releases/new` → Tag `v1.1.3` → Target `main` (`178dea6`) → Title `v1.1.3: site SEO + sponsors + CI fixes + smoke workdir` → Notes: copy `CHANGELOG.md ## [v1.1.3]` section → Publish release
-2. Verify: `gh api repos/SriChandraSekharA/forge-standard-review/releases/tags/v1.1.3 --jq .tag_name` → `v1.1.3`, `gh release view v1.1.3 --json tagName,publishedAt,url` → `200`
+1. `https://github.com/SriChandraSekharA/forge-review/releases/new` → Tag `v1.1.3` → Target `main` (`178dea6`) → Title `v1.1.3: site SEO + sponsors + CI fixes + smoke workdir` → Notes: copy `CHANGELOG.md ## [v1.1.3]` section → Publish release
+2. Verify: `gh api repos/SriChandraSekharA/forge-review/releases/tags/v1.1.3 --jq .tag_name` → `v1.1.3`, `gh release view v1.1.3 --json tagName,publishedAt,url` → `200`
 
 Tag `v1.1.3` already at `eb55395` → `178dea6^{}` (`git ls-remote --tags origin | grep v1.1.3`), draft `v1.1.2 9fd650d` + `v1.1.1 7a28222` also pushed via `git push --tags`.
 

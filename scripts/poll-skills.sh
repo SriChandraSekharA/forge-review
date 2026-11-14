@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # Task 8.2 skills.sh Polling Harness — 2026-09-05
-# Purpose: poll https://skills.sh/SriChandraSekharA/forge-standard-review (308→www) without tight loop;
+# Purpose: poll https://skills.sh/SriChandraSekharA/forge-review (308→www) without tight loop;
 #          404 with NEXT_HTTP_ERROR_FALLBACK is pending <24h, not publish failure.
 #          Direct npx add -l Found 1 skill is truth.
 # Usage: bash scripts/poll-skills.sh
@@ -22,8 +22,8 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 TMP_BODY="$TMP_DIR/skills_body.html"
 TMP_BODY_WWW="$TMP_DIR/skills_body_www.html"
 
-URL_A="https://skills.sh/SriChandraSekharA/forge-standard-review"
-URL_B="https://www.skills.sh/SriChandraSekharA/forge-standard-review"
+URL_A="https://skills.sh/SriChandraSekharA/forge-review"
+URL_B="https://www.skills.sh/SriChandraSekharA/forge-review"
 # lowercase variants (skills.sh normalizes to lowercase)
 URL_A_LC="https://skills.sh/srichandrasekhara/forge-standard-review"
 URL_B_LC="https://www.skills.sh/srichandrasekhara/forge-standard-review"
@@ -118,13 +118,13 @@ else
 fi
 echo ""
 
-# --- npx --yes skills add SriChandraSekharA/forge-standard-review --skill forge-standard-review -g check (remote) ---
-echo "## npx --yes skills add SriChandraSekharA/forge-standard-review --skill forge-standard-review -g check (remote)"
+# --- npx --yes skills add SriChandraSekharA/forge-review --skill forge-standard-review -g check (remote) ---
+echo "## npx --yes skills add SriChandraSekharA/forge-review --skill forge-standard-review -g check (remote)"
 echo "# Note: may 404 until crawl <24h; 404 is pending, not failure"
 if command -v npx >/dev/null 2>&1; then
   # We run with || true so 404 does not fail script (MUST NOT treat 404 as publish failure)
   # No timeout on macOS (timeout missing); use || true and head to bound
-  npx --yes skills add SriChandraSekharA/forge-standard-review --skill forge-standard-review -g 2>&1 | head -n 80 || true
+  npx --yes skills add SriChandraSekharA/forge-review --skill forge-standard-review -g 2>&1 | head -n 80 || true
 else
   echo "npx not found"
 fi
@@ -141,7 +141,7 @@ echo "Timestamp UTC: ${timestamp_utc} IST: ${timestamp_ist}"
 echo "308 chain: ${URL_A} -> ${URL_B} (308 ok)"
 echo "HTTP_CODE + og:title logged above for both https://skills.sh/... and https://www.skills.sh/... lowercase"
 echo "Local: npx --yes skills add \"${WORKDIR}\" -l => Found 1 skill (truth)"
-echo "Remote: npx --yes skills add SriChandraSekharA/forge-standard-review --skill forge-standard-review -g => pending if 404"
+echo "Remote: npx --yes skills add SriChandraSekharA/forge-review --skill forge-standard-review -g => pending if 404"
 echo "No tight loop — single poll per invocation. 404 with NEXT_HTTP_ERROR_FALLBACK is NOT publish failure."
 echo ""
 
@@ -178,9 +178,9 @@ log_target() {
     if command -v npx >/dev/null 2>&1; then
       npx --yes skills add "${WORKDIR}" -l 2>&1 | grep -E "Found 1 skill|Available Skills|forge-standard-review|Local path validated|Source:" | head -n 10 || true
     fi
-    echo "npx --yes skills add SriChandraSekharA/forge-standard-review --skill forge-standard-review -g: (head)"
+    echo "npx --yes skills add SriChandraSekharA/forge-review --skill forge-standard-review -g: (head)"
     if command -v npx >/dev/null 2>&1; then
-      npx --yes skills add SriChandraSekharA/forge-standard-review --skill forge-standard-review -g 2>&1 | head -n 20 || echo "(remote check 404 pending — retry later)"
+      npx --yes skills add SriChandraSekharA/forge-review --skill forge-standard-review -g 2>&1 | head -n 20 || echo "(remote check 404 pending — retry later)"
     fi
     echo "Note: 404 with NEXT_HTTP_ERROR_FALLBACK is propagation pending (<24h), NOT publish failure. No tight loop. No git push. No package.json/SKILL.md edit to force crawl."
   } >> "${file}" 2>&1 || true
