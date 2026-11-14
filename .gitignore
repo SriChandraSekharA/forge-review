@@ -1,7 +1,7 @@
 .forge-standard-review/
 roadmap.md
 *.log
-!.omo/verify.log
+.omo/
 .DS_Store
 node_modules/
 __pycache__/
