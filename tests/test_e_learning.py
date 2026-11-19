@@ -120,6 +120,7 @@ def test_e_tests_hook_failing_and_passing(tmp_path):
     learning = learning_md(fail)
     assert "[test/high] test command failed (exit 7): echo boom-output; exit 7" in learning, learning
     assert "test-output: boom-output" in learning, learning  # output-tail line captured
+    assert "score: 5" in r.stdout, r.stdout
     log = run_log_text(fail)
     assert "tests hook: command failed (exit 7)" in log, log
     print(f"ARTIFACT learning.md (failing tests):\n{learning}")
@@ -134,6 +135,28 @@ def test_e_tests_hook_failing_and_passing(tmp_path):
     assert "[test/high]" not in learning, learning
     assert "tests hook: command passed (exit 0)" in run_log_text(ok)
     print(f"ARTIFACT learning.md (passing tests): no [test/high] finding")
+
+
+def test_e_range_is_passed_as_one_git_argument(tmp_path):
+    tmp = tmp_path / "range"
+    tmp.mkdir()
+    make_repo(tmp)
+
+    run("git config user.email test@test.com", cwd=tmp)
+    run("git config user.name test", cwd=tmp)
+    (tmp / "app.txt").write_text("one\n")
+    run("git add app.txt && git commit -m base", cwd=tmp)
+    (tmp / "app.txt").write_text("two\n")
+    run("git add app.txt && git commit -m next", cwd=tmp)
+
+    marker = tmp / "shell-was-expanded"
+    malicious_range = f"HEAD~1..HEAD; touch {marker}"
+    r = run(
+        f'bash scripts/review.sh --range "{malicious_range}" --max-iterations 1',
+        cwd=tmp,
+    )
+    assert r.returncode == 0, f"review failed: {r.stderr} {r.stdout}"
+    assert not marker.exists(), "range text was interpreted by a shell"
 
 
 def test_e_learn_dedupe_and_list(tmp_path):

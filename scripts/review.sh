@@ -44,6 +44,12 @@ while [ $# -gt 0 ]; do
     --range)
       mode="range"
       if [ $# -lt 2 ]; then echo "error: --range requires BASE..HEAD" >&2; exit 2; fi
+      case "$2" in
+        ""|-*|*$'\n'*|*$'\r'*)
+          echo "error: invalid Git range" >&2
+          exit 2
+          ;;
+      esac
       range_val="$2"
       shift 2
       ;;
@@ -102,6 +108,12 @@ while [ $# -gt 0 ]; do
     *)
       # bare range like HEAD~1..HEAD or main...feature
       if echo "$1" | grep -qE "\.\."; then
+        case "$1" in
+          ""|-*|*$'\n'*|*$'\r'*)
+            echo "error: invalid Git range" >&2
+            exit 2
+            ;;
+        esac
         mode="range"
         range_val="$1"
         shift
@@ -147,9 +159,9 @@ get_diff() {
       ;;
     range)
       if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        # range_val may contain .. or ... ; use as-is for git diff
-        # shellcheck disable=SC2086
-        git diff $range_val > "$out" 2>/dev/null || git diff "$BASE_SHA...$HEAD_SHA" > "$out" 2>/dev/null || true
+        # Range expressions are one argv item. Quoting prevents whitespace,
+        # shell metacharacters, and pathname expansion from changing the request.
+        git diff "$range_val" > "$out" 2>/dev/null || git diff "$BASE_SHA...$HEAD_SHA" > "$out" 2>/dev/null || true
       else
         : > "$out"
       fi
@@ -537,6 +549,13 @@ while [ "$i" -le "$MAX_ITERATIONS" ]; do
     sort -u "$findings_tmp" -o "$findings_tmp" 2>/dev/null || true
   fi
 
+  # --tests hook: run once per iteration, before filtering and critic scoring,
+  # so test failures participate in the same gate and convergence logic.
+  run_tests_hook "$findings_tmp"
+  if [ -s "$findings_tmp" ]; then
+    sort -u "$findings_tmp" -o "$findings_tmp" 2>/dev/null || true
+  fi
+
   # Feedback memory: learned dismiss rules + severity floor (after dedup)
   apply_learning_filters "$findings_tmp"
   if [ "$SUPPRESSED_ITER" -gt 0 ]; then
@@ -563,14 +582,6 @@ while [ "$i" -le "$MAX_ITERATIONS" ]; do
   if [ -z "$score_val" ]; then score_val=6; fi
   feedback_line=$(grep -E "^feedback:" "$critic_out" | head -1 || echo "feedback: n/a")
   hints_line=$(grep -E "^hints:" "$critic_out" | head -1 || echo "hints: none")
-
-  # --tests hook: once per iteration, after critic scoring
-  run_tests_hook "$findings_tmp"
-  # recompute count so logs reflect the pool incl. synthetic test findings
-  if [ -n "$tests_cmd" ]; then
-    findings_count=$(grep -cvE "^[[:space:]]*$" "$findings_tmp" 2>/dev/null || true)
-    if ! echo "$findings_count" | grep -qE "^[0-9]+$"; then findings_count=0; fi
-  fi
 
   # Append monotonically to learning.md (never overwrite)
   {

@@ -12,7 +12,7 @@ forge-standard-review ships as a publishable skill at `SriChandraSekharA/forge-r
 
 Two layouts are on the table:
 
-* **A: Same-repo `mcp/`** inside `SriChandraSekharA/forge-review` at `mcp/server.ts` (stdio) and `mcp/mcp.json` manifest, using `@modelcontextprotocol/sdk`.
+* **A: Same-repo `mcp/`** inside `SriChandraSekharA/forge-review` at `mcp/src/server.ts` (stdio) and `mcp/mcp.json` manifest, using `@modelcontextprotocol/sdk`.
 * **B: Separate `forge-standard-review-mcp`** repo that holds the MCP server on its own.
 
 We compared them on six things that actually matter for this project: publish friction, skills.sh crawl, versioning, dep isolation, CI duplication, and UX confusion.
@@ -21,7 +21,7 @@ We compared them on six things that actually matter for this project: publish fr
 
 **Use same-repo `mcp/` inside `SriChandraSekharA/forge-review`.**
 
-* Server entry: `mcp/server.ts` running stdio transport via `@modelcontextprotocol/sdk`.
+* Server entry: `mcp/src/server.ts` running stdio transport via `@modelcontextprotocol/sdk`.
 * Manifest: `mcp/mcp.json` at repo root relative `mcp/mcp.json`, referenced from skill metadata where needed.
 * Package and skill stay together so a single publish covers both.
 
@@ -53,7 +53,8 @@ Scoring rationale, short form:
 ```
 forge-standard-review/
   mcp/
-    server.ts      # stdio server, entry for @modelcontextprotocol/sdk
+    src/
+      server.ts    # stdio server, entry for @modelcontextprotocol/sdk
     mcp.json       # MCP manifest, tools and resources declaration
   scripts/         # existing skill scripts, unchanged
   references/      # existing checklists, unchanged
@@ -63,7 +64,7 @@ forge-standard-review/
 
 **Runtime**
 
-* `mcp/server.ts` uses stdio transport from `@modelcontextprotocol/sdk`. No HTTP, no extra port, no auth to manage in v1.
+* `mcp/src/server.ts` uses stdio transport from `@modelcontextprotocol/sdk`. No HTTP, no extra port, no auth to manage in v1.
 * `mcp/mcp.json` declares the server name, version tied to `package.json` version, and the tools exposed. Keep it small and explicit, one file that clients can read without running code.
 * The skill and MCP server import shared logic from the same codebase where possible, so review rules and prompts do not drift.
 
@@ -82,7 +83,7 @@ If same-repo is blocked, for example by an org policy that forbids MCP SDK deps 
 Fallback steps:
 
 1. Create `forge-standard-review-mcp` from the canonical templates, set `package.json` name to `forge-standard-review-mcp`, and pin its skill dep to the `forge-standard-review` release tag it was cut from, for example `forge-standard-review@1.0.0`.
-2. Move only `mcp/server.ts` and `mcp/mcp.json` into the new repo, keep SKILL.md in the original repo, and add a note in both READMEs linking the pair.
+2. Move only `mcp/src/server.ts` and `mcp/mcp.json` into the new repo, keep SKILL.md in the original repo, and add a note in both READMEs linking the pair.
 3. Add a small CI job in each repo that checks version alignment and fails if the pair drifts by more than a patch.
 4. Revisit this ADR and file an amendment ADR-002 recording why the split was needed and how long it should last. Prefer to merge back to same-repo once the blocker clears.
 

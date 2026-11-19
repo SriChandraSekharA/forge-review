@@ -54,7 +54,7 @@ git clone https://github.com/SriChandraSekharA/forge-review.git
 - **Test-gated loop** - `review.sh --tests CMD` runs your test command once per iteration; a failure injects one synthetic `[test/high]` finding plus the output tail so the loop reacts.
 - **Ranked report** - findings ordered `critical -> high -> medium -> low -> nitpick` with file:line, severity, and actionable fix hints.
 - **Idempotent memory** - `.forge-standard-review/` is created on first invocation and reused/updated thereafter; per-repo isolation, never committed.
-- **Fully offline** - no API keys, no network calls, no hidden uploads; all analysis runs locally via bash scripts.
+- **Offline by default** - no API keys, network calls, or hidden uploads in the default review path; all analysis runs locally via bash scripts. Opt-in Semgrep `--config auto` may fetch rules.
 
 ## Quick Start
 

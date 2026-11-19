@@ -12,8 +12,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   buildReviewArgs,
   FORGE_REVIEW_TOOL,
+  getActiveReviewWorkdir,
   handleForgeReview,
   resolveRepoRoot,
+  setActiveReviewWorkdir,
 } from "../src/server.js";
 
 // --- mock node:child_process spawn per vitest mocking ---
@@ -198,6 +200,22 @@ describe("handleForgeReview (forge_review tool handler) with spawn mocking", () 
     expect(res.isError).toBe(true);
     expect(res.content[0].text).toMatch(/workdir does not exist/);
     expect(mockedSpawn).not.toHaveBeenCalled();
+  });
+
+  it("regular-file workdir returns isError true without spawning", async () => {
+    const file = path.join(tmpDir, "not-a-directory");
+    fs.writeFileSync(file, "x");
+    const res = await handleForgeReview({ workdir: file });
+    expect(res.isError).toBe(true);
+    expect(res.content[0].text).toMatch(/workdir is not a directory/);
+    expect(mockedSpawn).not.toHaveBeenCalled();
+  });
+
+  it("successful review updates the active resource workdir", async () => {
+    mockedSpawn.mockImplementation(() => makeMockChild({ stdout: "score: 8\n", exitCode: 0 }));
+    setActiveReviewWorkdir(resolveRepoRoot());
+    await handleForgeReview({ workdir: tmpDir });
+    expect(getActiveReviewWorkdir()).toBe(path.resolve(tmpDir));
   });
 
   it("preview flag forwarded as --preview (CONTRIBUTING preview example)", async () => {

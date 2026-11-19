@@ -22,7 +22,8 @@ Core principles:
 - **Severity-cap score** - pure function of findings: critical caps 3, high 5, medium 7; only low/nitpick reach 8-10.
 - **Hunk-aware findings** - real `path:line` resolved from diff hunk headers.
 - **Real linters first** - ruff (Python), eslint (JS/TS) and gitleaks run when installed and keep only
-  violations on lines this diff added; semgrep is opt-in (`FORGE_SEMGREP=1`). Regex rules are the offline
+  violations on lines this diff added; semgrep is opt-in (`FORGE_SEMGREP=1`) and network-aware because
+  `--config auto` may fetch rules. Regex rules are the offline
   fallback and stand down only where a linter demonstrably covers the same problem. `--fix` applies the
   mechanical part; the rest stays with the reviewer.
 - **Convergence stop** - loop halts when the finding set stops changing (iteration cap still configurable).
@@ -257,7 +258,7 @@ When no tests exist (`Tests detected: no`), the loop skips test checks and does 
 
 ## MCP Server
 
-Same-repo server at `mcp/server.ts` with manifest `mcp/mcp.json`, stdio transport via `@modelcontextprotocol/sdk`. Mirrors `scripts/review.sh` locally, no network.
+Same-repo server at `mcp/src/server.ts` with manifest `mcp/mcp.json`, stdio transport via `@modelcontextprotocol/sdk`. Mirrors `scripts/review.sh` locally; the default review path has no network calls, while opt-in Semgrep may fetch rules.
 
 ### Tool list (synced to `mcp/mcp.json` exactly)
 
@@ -306,5 +307,5 @@ All paths are quoted and `workdir` is passed as `cwd` to `spawn("bash", [...])` 
 - Keep reviews deterministic: same input diff produces same ordered findings.
 - Write findings as actionable items with file:line, severity, and fix hint.
 - Prefer knowledge fallback chain over hard-coded rules when repo docs exist.
-- No network calls inside the loop; all analysis is local.
+- No network calls in the default loop; all analysis is local. Opt-in Semgrep may fetch rules.
 - Respect `.gitignore` and `.forge-standard-review/` isolation.

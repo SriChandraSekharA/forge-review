@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -166,6 +166,16 @@ export function resolveReviewJsonPaths(repoRoot: string): string[] {
   ];
 }
 
+let activeReviewWorkdir = resolveRepoRoot();
+
+export function getActiveReviewWorkdir(): string {
+  return activeReviewWorkdir;
+}
+
+export function setActiveReviewWorkdir(workdir: string): void {
+  activeReviewWorkdir = workdir;
+}
+
 export function readFirstExisting(paths: string[]): { path: string; content: string } | null {
   for (const p of paths) {
     try {
@@ -235,17 +245,28 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
 
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   const { uri } = request.params;
-  const repoRoot = resolveRepoRoot();
+  let repoRoot = activeReviewWorkdir;
+  let uriPath = uri;
+  try {
+    const uriUrl = new URL(uri);
+    const workdir = uriUrl.searchParams.get("workdir");
+    if (workdir) repoRoot = path.resolve(workdir);
+    uriPath = uriUrl.pathname;
+  } catch {
+    repoRoot = activeReviewWorkdir;
+  }
 
   // Normalize uri handling for report.md and review.json resources
   const isReport =
     uri === REPORT_RESOURCE_URI ||
     uri === REPORT_RESOURCE_URI_CANONICAL ||
+    uriPath.endsWith("/report.md") ||
     uri.endsWith("/report.md") ||
     uri === "forge://report.md";
 
   const isReviewJson =
     uri === REVIEW_JSON_RESOURCE_URI ||
+    uriPath.endsWith("/review.json") ||
     uri.endsWith("/review.json") ||
     uri === "forge://review.json";
 
@@ -381,7 +402,7 @@ export async function handleForgeReview(rawArgs: unknown): Promise<{
   const repoRoot = resolveRepoRoot();
   const workdir = typed.workdir ? path.resolve(typed.workdir) : repoRoot;
 
-  // Validate workdir exists and is a directory
+  // Validate workdir exists and is a directory.
   if (!existsSync(workdir)) {
     return {
       content: [
@@ -393,6 +414,30 @@ export async function handleForgeReview(rawArgs: unknown): Promise<{
       isError: true,
     };
   }
+  try {
+    if (!statSync(workdir).isDirectory()) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `workdir is not a directory: ${workdir}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  } catch (err) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `workdir could not be inspected: ${workdir}: ${String(err)}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+  setActiveReviewWorkdir(workdir);
 
   const scriptPath = path.join(repoRoot, "scripts", "review.sh");
 

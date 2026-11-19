@@ -20,5 +20,5 @@ continuous loop, ranked reporting, and per-repo memory. No external tokens.
 - Frontmatter in `SKILL.md` is exactly `name` + `description` (parser-strict).
 - Keep line lengths reasonable; prefer small, focused scripts.
 - Do not introduce external service tokens or gated dependencies.
-- `references/checklist.md` is the 5-axis truth; `references/knowledge.md`
+- `references/checklist.md` is the 6-axis truth; `references/knowledge.md`
   is the fallback chain truth.
